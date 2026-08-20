@@ -1,0 +1,198 @@
+﻿@{
+    ViewData["Title"] = "مدیریت معلمان";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0">مدیریت معلمان</h4>
+    <button class="btn btn-primary" onclick="openCreateModal()">+ افزودن معلم</button>
+</div>
+
+<div class="card stat-card p-3 mb-3">
+    <div class="row g-2">
+        <div class="col-md-9">
+            <input type="text" id="searchInput" class="form-control" placeholder="جستجو بر اساس نام، کد ملی یا تخصص..." />
+        </div>
+        <div class="col-md-3">
+            <button class="btn btn-outline-secondary w-100" onclick="loadTeachers(1)"> بروزرسانی</button>
+        </div>
+    </div>
+</div>
+
+<div class="card stat-card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>نام</th>
+                    <th>نام خانوادگی</th>
+                    <th>کد ملی</th>
+                    <th>تخصص</th>
+                    <th>تلفن</th>
+                    <th>وضعیت</th>
+                    <th>عملیات</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"><tr><td colspan="8" class="text-center py-4">در حال بارگذاری...</td></tr></tbody>
+        </table>
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center bg-white">
+        <span id="pageInfo" class="small text-muted"></span>
+        <ul class="pagination pagination-sm mb-0" id="pagination"></ul>
+    </div>
+</div>
+
+<div class="modal fade" id="teacherModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">افزودن معلم</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="teacherId" value="0" />
+                <div class="row g-3">
+                    <div class="col-md-6"><label class="form-label">نام *</label><input type="text" id="firstName" class="form-control" /></div>
+                    <div class="col-md-6"><label class="form-label">نام خانوادگی *</label><input type="text" id="lastName" class="form-control" /></div>
+                    <div class="col-md-6"><label class="form-label">کد ملی *</label><input type="text" id="nationalCode" class="form-control" maxlength="10" /></div>
+                    <div class="col-md-6"><label class="form-label">تلفن</label><input type="text" id="phoneNumber" class="form-control" /></div>
+                    <div class="col-md-6"><label class="form-label">تخصص</label><input type="text" id="expertise" class="form-control" /></div>
+                    <div class="col-md-6">
+                        <label class="form-label">وضعیت</label>
+                        <select id="status" class="form-select"><option value="1">فعال</option><option value="0">غیرفعال</option></select>
+                    </div>
+                    <div class="col-12"><label class="form-label">بیوگرافی</label><textarea id="bio" class="form-control" rows="2"></textarea></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-success" onclick="saveTeacher()"> ذخیره</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let currentPage = 1;
+        let modalInstance = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            modalInstance = new bootstrap.Modal(document.getElementById('teacherModal'));
+            loadTeachers(1);
+            let timer;
+            document.getElementById('searchInput').addEventListener('input', () => {
+                clearTimeout(timer);
+                timer = setTimeout(() => loadTeachers(1), 400);
+            });
+        });
+
+        async function loadTeachers(page) {
+            currentPage = page;
+            const search = document.getElementById('searchInput').value.trim();
+            try {
+                const res = await ajaxGet(`/Teacher/GetTeachers?pageNumber=${page}&pageSize=10&search=${encodeURIComponent(search)}`);
+                renderTable(res);
+                renderPagination(res);
+            } catch (e) { showToast('خطا در دریافت اطلاعات', false); }
+        }
+
+        function renderTable(res) {
+            const tbody = document.getElementById('tableBody');
+            if (!res.items || res.items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">هیچ معلمی یافت نشد.</td></tr>';
+                document.getElementById('pageInfo').textContent = '';
+                return;
+            }
+            tbody.innerHTML = res.items.map((t, i) => `
+                    <tr>
+                        <td>${(res.pageNumber - 1) * res.pageSize + i + 1}</td>
+                        <td>${escapeHtml(t.firstName)}</td>
+                        <td>${escapeHtml(t.lastName)}</td>
+                        <td>${escapeHtml(t.nationalCode)}</td>
+                        <td>${escapeHtml(t.expertise) || '-'}</td>
+                        <td>${t.phoneNumber ? escapeHtml(t.phoneNumber) : '-'}</td>
+                        <td>${t.status === 1 ? '<span class="badge bg-success">فعال</span>' : '<span class="badge bg-danger">غیرفعال</span>'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="openEditModal(${t.id})"> ویرایش</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteTeacher(${t.id})"> حذف</button>
+                        </td>
+                    </tr>`).join('');
+            document.getElementById('pageInfo').textContent = `صفحه ${res.pageNumber} از ${res.totalPages} - مجموع ${res.totalCount} معلم`;
+        }
+
+        function renderPagination(res) {
+            const ul = document.getElementById('pagination');
+            ul.innerHTML = '';
+            for (let p = 1; p <= res.totalPages; p++) {
+                const li = document.createElement('li');
+                li.className = 'page-item' + (p === res.pageNumber ? ' active' : '');
+                li.innerHTML = `<a class="page-link" href="javascript:void(0)" onclick="loadTeachers(${p})">${p}</a>`;
+                ul.appendChild(li);
+            }
+        }
+
+        function openCreateModal() {
+            document.getElementById('modalTitle').textContent = 'افزودن معلم';
+            ['teacherId', 'firstName', 'lastName', 'nationalCode', 'phoneNumber', 'expertise', 'bio'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('teacherId').value = 0;
+            document.getElementById('status').value = '1';
+            modalInstance.show();
+        }
+
+        async function openEditModal(id) {
+            try {
+                const t = await ajaxGet('/Teacher/GetById?id=' + id);
+                document.getElementById('modalTitle').textContent = 'ویرایش معلم';
+                document.getElementById('teacherId').value = t.id;
+                document.getElementById('firstName').value = t.firstName || '';
+                document.getElementById('lastName').value = t.lastName || '';
+                document.getElementById('nationalCode').value = t.nationalCode || '';
+                document.getElementById('phoneNumber').value = t.phoneNumber || '';
+                document.getElementById('expertise').value = t.expertise || '';
+                document.getElementById('bio').value = t.bio || '';
+                document.getElementById('status').value = t.status.toString();
+                modalInstance.show();
+            } catch (e) { showToast('خطا در دریافت اطلاعات', false); }
+        }
+
+        async function saveTeacher() {
+            const id = parseInt(document.getElementById('teacherId').value);
+            const data = {
+                id: id,
+                firstName: document.getElementById('firstName').value.trim(),
+                lastName: document.getElementById('lastName').value.trim(),
+                nationalCode: document.getElementById('nationalCode').value.trim(),
+                phoneNumber: document.getElementById('phoneNumber').value.trim(),
+                expertise: document.getElementById('expertise').value.trim(),
+                bio: document.getElementById('bio').value.trim(),
+                status: parseInt(document.getElementById('status').value)
+            };
+
+            if (!data.firstName || !data.lastName || !data.nationalCode) { showToast('نام، نام خانوادگی و کد ملی الزامی هستند.', false); return; }
+            if (!/^\d{10}$/.test(data.nationalCode)) { showToast('کد ملی باید 10 رقم باشد.', false); return; }
+
+            try {
+                const res = await ajaxPost(id === 0 ? '/Teacher/Create' : '/Teacher/Update', data);
+                showToast(res.message, res.success);
+                if (res.success) { modalInstance.hide(); loadTeachers(currentPage); }
+            } catch (e) { showToast('خطا در ارتباط با سرور', false); }
+        }
+
+        async function deleteTeacher(id) {
+            if (!confirm('آیا از حذف این معلم مطمئن هستید؟')) return;
+            try {
+                const res = await ajaxPost('/Teacher/Delete', { id: id });
+                showToast(res.message, res.success);
+                if (res.success) loadTeachers(currentPage);
+            } catch (e) { showToast('خطا در ارتباط با سرور', false); }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+    </script>
+}

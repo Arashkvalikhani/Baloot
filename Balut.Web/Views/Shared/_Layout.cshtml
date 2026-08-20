@@ -1,0 +1,167 @@
+﻿<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] | مجموعه آموزشی بلوط</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.rtl.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    @if (User.Identity != null && User.Identity.IsAuthenticated)
+    {
+        @Html.AntiForgeryToken()
+
+        <nav class="blut-navbar d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+                <button type="button" class="sidebar-toggle" id="sidebarToggle" title="باز/بستن منو">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+                <a class="navbar-brand" asp-controller="Home" asp-action="Index">مجموعه آموزشی بلوط</a>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <span class="user-info">@User.Identity.Name</span>
+                <form asp-controller="Account" asp-action="Logout" method="post" class="m-0">
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">خروج</button>
+                </form>
+            </div>
+        </nav>
+
+        <!-- Backdrop برای موبایل -->
+        <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+        <div class="app-wrapper">
+            <nav class="sidebar" id="sidebar">
+                @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin") || User.IsInRole("Secretary"))
+                {
+                    <div class="sidebar-title">مدیریت آموزشگاه</div>
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link" asp-controller="Dashboard" asp-action="Index">داشبورد</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Student" asp-action="Index">دانشجویان</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Parent" asp-action="Index">والدین</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Teacher" asp-action="Index">معلمان</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Course" asp-action="Index">دوره‌ها</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Class" asp-action="Index">کلاس‌ها</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Enrollment" asp-action="Index">ثبت‌نام‌ها</a></li>
+                    </ul>
+                }
+
+                @if (User.IsInRole("SuperAdmin"))
+                {
+                    <div class="sidebar-title">پنل راهبری</div>
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link" asp-controller="SuperAdmin" asp-action="Users">کاربران</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="SuperAdmin" asp-action="Roles">نقش‌ها</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="SuperAdmin" asp-action="AuditLogs">لاگ‌های سیستم</a></li>
+                    </ul>
+                }
+
+                @if (User.IsInRole("Teacher"))
+                {
+                    <div class="sidebar-title">پنل معلم</div>
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link" asp-controller="TeacherPanel" asp-action="Index">کلاس‌های من</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="TeacherPanel" asp-action="AttendanceReport">گزارش حضور و غیاب</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Chat" asp-action="Index">پیام‌ها</a></li>
+                    </ul>
+                }
+
+                @if (User.IsInRole("Student"))
+                {
+                    <div class="sidebar-title">پنل دانشجو</div>
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link" asp-controller="StudentPanel" asp-action="Index">صفحه اصلی</a></li>
+                    </ul>
+                }
+
+                @if (User.IsInRole("Parent"))
+                {
+                    <div class="sidebar-title">پنل والدین</div>
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link" asp-controller="ParentPanel" asp-action="Index">فرزندان من</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Chat" asp-action="Index">پیام‌ها</a></li>
+                    </ul>
+                }
+            </nav>
+
+            <main class="main-content">
+                @RenderBody()
+            </main>
+        </div>
+    }
+    else
+    {
+        <main>@RenderBody()</main>
+    }
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/balut-ajax.js" asp-append-version="true"></script>
+
+    <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                // هایلایت منوی فعال
+                const current = window.location.pathname.toLowerCase();
+                document.querySelectorAll('.sidebar a').forEach(a => {
+                    const href = (a.getAttribute('href') || '').toLowerCase();
+                    if (href && href !== '/' && current.startsWith(href)) {
+                        a.classList.add('active');
+                    }
+                });
+
+                const toggleBtn = document.getElementById('sidebarToggle');
+                const backdrop = document.getElementById('sidebarBackdrop');
+                const sidebar = document.getElementById('sidebar');
+
+                if (!toggleBtn || !sidebar) return;
+
+                // تشخیص اندازه صفحه
+                const isMobileOrTablet = () => window.innerWidth < 992;
+
+                // باز/بستن سایدبار
+                toggleBtn.addEventListener('click', () => {
+                    if (isMobileOrTablet()) {
+                        // در موبایل/تبلت: overlay
+                        document.body.classList.toggle('sidebar-open');
+                    } else {
+                        // در دسکتاپ: جمع/باز کردن
+                        document.body.classList.toggle('sidebar-collapsed');
+                    }
+                });
+
+                // کلیک روی backdrop = بستن
+                if (backdrop) {
+                    backdrop.addEventListener('click', () => {
+                        document.body.classList.remove('sidebar-open');
+                    });
+                }
+
+                // کلیک روی لینک در موبایل = بستن خودکار
+                document.querySelectorAll('.sidebar a').forEach(link => {
+                    link.addEventListener('click', () => {
+                        if (isMobileOrTablet()) {
+                            document.body.classList.remove('sidebar-open');
+                        }
+                    });
+                });
+
+                // مدیریت تغییر اندازه پنجره
+                let lastWidth = window.innerWidth;
+                window.addEventListener('resize', () => {
+                    const newWidth = window.innerWidth;
+                    // اگر از مرز 992 عبور کردیم، حالت‌ها را پاک کن
+                    if ((lastWidth < 992 && newWidth >= 992) || (lastWidth >= 992 && newWidth < 992)) {
+                        document.body.classList.remove('sidebar-open', 'sidebar-collapsed');
+                    }
+                    lastWidth = newWidth;
+                });
+            });
+    </script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

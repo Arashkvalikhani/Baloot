@@ -1,0 +1,202 @@
+﻿@{
+    ViewData["Title"] = "مدیریت کلاس‌ها";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0">مدیریت کلاس‌ها</h4>
+    <button class="btn btn-primary" onclick="openCreateModal()">+ افزودن کلاس</button>
+</div>
+
+<div class="card stat-card p-3 mb-3">
+    <div class="row g-2">
+        <div class="col-md-9"><input type="text" id="searchInput" class="form-control" placeholder="جستجو بر اساس نام کلاس یا دوره..." /></div>
+        <div class="col-md-3"><button class="btn btn-outline-secondary w-100" onclick="loadClasses(1)"> بروزرسانی</button></div>
+    </div>
+</div>
+
+<div class="card stat-card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr><th>#</th><th>نام کلاس</th><th>دوره</th><th>معلم</th><th>اتاق</th><th>برنامه</th><th>ظرفیت</th><th>وضعیت</th><th>عملیات</th></tr>
+            </thead>
+            <tbody id="tableBody"><tr><td colspan="9" class="text-center py-4">در حال بارگذاری...</td></tr></tbody>
+        </table>
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center bg-white">
+        <span id="pageInfo" class="small text-muted"></span>
+        <ul class="pagination pagination-sm mb-0" id="pagination"></ul>
+    </div>
+</div>
+
+<div class="modal fade" id="classModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">افزودن کلاس</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="classId" value="0" />
+                <div class="row g-3">
+                    <div class="col-md-6"><label class="form-label">نام کلاس *</label><input type="text" id="name" class="form-control" /></div>
+                    <div class="col-md-6"><label class="form-label">دوره *</label><select id="courseId" class="form-select"></select></div>
+                    <div class="col-md-6"><label class="form-label">معلم *</label><select id="teacherId" class="form-select"></select></div>
+                    <div class="col-md-3"><label class="form-label">اتاق</label><input type="text" id="room" class="form-control" /></div>
+                    <div class="col-md-3"><label class="form-label">ظرفیت *</label><input type="number" id="capacity" class="form-control" min="1" /></div>
+                    <div class="col-md-6"><label class="form-label">برنامه زمانی (مثلاً: شنبه و دوشنبه ۱۰-۱۲)</label><input type="text" id="schedule" class="form-control" /></div>
+                    <div class="col-md-6">
+                        <label class="form-label">وضعیت</label>
+                        <select id="status" class="form-select"><option value="1">فعال</option><option value="0">غیرفعال</option></select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-success" onclick="saveClass()"> ذخیره</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let currentPage = 1;
+        let modalInstance = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            modalInstance = new bootstrap.Modal(document.getElementById('classModal'));
+            loadClasses(1);
+            let timer;
+            document.getElementById('searchInput').addEventListener('input', () => {
+                clearTimeout(timer);
+                timer = setTimeout(() => loadClasses(1), 400);
+            });
+        });
+
+        async function loadClasses(page) {
+            currentPage = page;
+            const search = document.getElementById('searchInput').value.trim();
+            try {
+                const res = await ajaxGet(`/Class/GetClasses?pageNumber=${page}&pageSize=10&search=${encodeURIComponent(search)}`);
+                renderTable(res);
+                renderPagination(res);
+            } catch (e) { showToast('خطا در دریافت اطلاعات', false); }
+        }
+
+        function renderTable(res) {
+            const tbody = document.getElementById('tableBody');
+            if (!res.items || res.items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-muted">هیچ کلاسی یافت نشد.</td></tr>';
+                document.getElementById('pageInfo').textContent = '';
+                return;
+            }
+            tbody.innerHTML = res.items.map((c, i) => `
+                    <tr>
+                        <td>${(res.pageNumber - 1) * res.pageSize + i + 1}</td>
+                        <td>${escapeHtml(c.name)}</td>
+                        <td>${escapeHtml(c.courseTitle)}</td>
+                        <td>${escapeHtml(c.teacherName)}</td>
+                        <td>${escapeHtml(c.room) || '-'}</td>
+                        <td>${escapeHtml(c.schedule) || '-'}</td>
+                        <td>${c.capacity}</td>
+                        <td>${c.status === 1 ? '<span class="badge bg-success">فعال</span>' : '<span class="badge bg-danger">غیرفعال</span>'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="openEditModal(${c.id})"> ویرایش</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteClass(${c.id})"> حذف</button>
+                        </td>
+                    </tr>`).join('');
+            document.getElementById('pageInfo').textContent = `صفحه ${res.pageNumber} از ${res.totalPages} - مجموع ${res.totalCount} کلاس`;
+        }
+
+        function renderPagination(res) {
+            const ul = document.getElementById('pagination');
+            ul.innerHTML = '';
+            for (let p = 1; p <= res.totalPages; p++) {
+                const li = document.createElement('li');
+                li.className = 'page-item' + (p === res.pageNumber ? ' active' : '');
+                li.innerHTML = `<a class="page-link" href="javascript:void(0)" onclick="loadClasses(${p})">${p}</a>`;
+                ul.appendChild(li);
+            }
+        }
+
+        async function loadDropdowns() {
+            try {
+                const [courses, teachers] = await Promise.all([
+                    ajaxGet('/Course/GetAll'),
+                    ajaxGet('/Teacher/GetAll')
+                ]);
+
+                document.getElementById('courseId').innerHTML =
+                    courses.map(c => `<option value="${c.id}">${escapeHtml(c.title)}</option>`).join('');
+
+                document.getElementById('teacherId').innerHTML =
+                    teachers.map(t => `<option value="${t.id}">${escapeHtml(t.firstName)} ${escapeHtml(t.lastName)}</option>`).join('');
+            } catch (e) { showToast('خطا در بارگذاری لیست‌ها', false); }
+        }
+
+        function openCreateModal() {
+            document.getElementById('modalTitle').textContent = 'افزودن کلاس';
+            ['classId', 'name', 'room', 'schedule'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('classId').value = 0;
+            document.getElementById('capacity').value = '';
+            document.getElementById('status').value = '1';
+            loadDropdowns().then(() => modalInstance.show());
+        }
+
+        async function openEditModal(id) {
+            try {
+                await loadDropdowns();
+                const c = await ajaxGet('/Class/GetById?id=' + id);
+                document.getElementById('modalTitle').textContent = 'ویرایش کلاس';
+                document.getElementById('classId').value = c.id;
+                document.getElementById('name').value = c.name || '';
+                document.getElementById('courseId').value = c.courseId;
+                document.getElementById('teacherId').value = c.teacherId;
+                document.getElementById('room').value = c.room || '';
+                document.getElementById('schedule').value = c.schedule || '';
+                document.getElementById('capacity').value = c.capacity;
+                document.getElementById('status').value = c.status.toString();
+                modalInstance.show();
+            } catch (e) { showToast('خطا در دریافت اطلاعات', false); }
+        }
+
+        async function saveClass() {
+            const id = parseInt(document.getElementById('classId').value);
+            const data = {
+                id: id,
+                name: document.getElementById('name').value.trim(),
+                courseId: parseInt(document.getElementById('courseId').value),
+                teacherId: parseInt(document.getElementById('teacherId').value),
+                room: document.getElementById('room').value.trim(),
+                schedule: document.getElementById('schedule').value.trim(),
+                capacity: parseInt(document.getElementById('capacity').value),
+                status: parseInt(document.getElementById('status').value)
+            };
+
+            if (!data.name || !data.capacity) { showToast('نام کلاس و ظرفیت الزامی هستند.', false); return; }
+
+            try {
+                const res = await ajaxPost(id === 0 ? '/Class/Create' : '/Class/Update', data);
+                showToast(res.message, res.success);
+                if (res.success) { modalInstance.hide(); loadClasses(currentPage); }
+            } catch (e) { showToast('خطا در ارتباط با سرور', false); }
+        }
+
+        async function deleteClass(id) {
+            if (!confirm('آیا از حذف این کلاس مطمئن هستید؟')) return;
+            try {
+                const res = await ajaxPost('/Class/Delete', { id: id });
+                showToast(res.message, res.success);
+                if (res.success) loadClasses(currentPage);
+            } catch (e) { showToast('خطا در ارتباط با سرور', false); }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+    </script>
+}

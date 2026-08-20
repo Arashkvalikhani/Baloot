@@ -1,0 +1,1017 @@
+/* ================================================
+   بلوط - طراحی ریسپانسیو حرفه‌ای
+   متن: Yekan | اعداد: Arial
+   ================================================ */
+
+/* ===== فونت Yekan ===== */
+@font-face {
+    font-family: 'Yekan';
+    src: url('../fonts/Yekan.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* ===== اعداد با فونت Arial ===== */
+@font-face {
+    font-family: 'BlutDigits';
+    src: local('Arial');
+    unicode-range: U+0030-0039, U+002E, U+002C, U+003A, U+002F, U+0025, U+002D;
+}
+
+/* ===== متغیرهای رنگ ===== */
+:root {
+    --blut-sidebar: #0F172A;
+    --blut-sidebar-hover: #1E293B;
+    --blut-sidebar-active: #334155;
+    --blut-primary: #2563EB;
+    --blut-primary-hover: #1D4ED8;
+    --blut-accent: #14B8A6;
+    --blut-bg: #F1F5F9;
+    --blut-card: #FFFFFF;
+    --blut-text: #1E293B;
+    --blut-text-muted: #64748B;
+    --blut-border: #E2E8F0;
+    --blut-danger: #DC2626;
+    --blut-warning: #F59E0B;
+    --blut-success: #10B981;
+    --blut-info: #0EA5E9;
+    --sidebar-width: 260px;
+    --navbar-height: 60px;
+}
+
+/* ===== پایه ===== */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    font-family: 'Yekan', 'Segoe UI', Tahoma, sans-serif;
+    font-size: 14px;
+    margin: 0;
+    padding: 0;
+    color: var(--blut-text);
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+body {
+    background: var(--blut-bg);
+    min-height: 100vh;
+}
+
+button,
+input,
+select,
+textarea,
+.form-control,
+.form-select,
+.btn,
+.table,
+.modal,
+.navbar,
+.nav,
+.badge,
+.alert,
+.form-label,
+.card,
+.page-link,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: inherit;
+}
+
+    /* ===== اعداد ===== */
+    .blut-digits,
+    input[type="number"],
+    .msg-time,
+    .chat-unread-badge {
+        font-family: Arial, sans-serif;
+    }
+
+/* ===== سلسله مراتب فونت ===== */
+h1 {
+    font-size: 28px;
+    font-weight: bold;
+    margin: 0 0 1rem;
+}
+
+h2 {
+    font-size: 24px;
+    font-weight: bold;
+    margin: 0 0 0.75rem;
+}
+
+h3 {
+    font-size: 20px;
+    font-weight: bold;
+    margin: 0 0 0.5rem;
+}
+
+h4 {
+    font-size: 18px;
+    font-weight: bold;
+    margin: 0 0 0.5rem;
+}
+
+h5 {
+    font-size: 16px;
+    font-weight: bold;
+    margin: 0 0 0.5rem;
+}
+
+h6 {
+    font-size: 14px;
+    font-weight: bold;
+    margin: 0 0 0.5rem;
+}
+
+/* ===== نوار بالا ===== */
+.blut-navbar {
+    background: var(--blut-card);
+    border-bottom: 1px solid var(--blut-border);
+    padding: 0 1.25rem;
+    height: var(--navbar-height);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+}
+
+    .blut-navbar .navbar-brand {
+        font-size: 17px;
+        font-weight: bold;
+        color: var(--blut-primary);
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .blut-navbar .user-info {
+        color: var(--blut-text-muted);
+        font-size: 13px;
+    }
+
+/* ===== دکمه Toggle سایدبار ===== */
+.sidebar-toggle {
+    background: transparent;
+    border: 1px solid var(--blut-border);
+    color: var(--blut-text);
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin-left: 0.75rem;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+}
+
+    .sidebar-toggle:hover {
+        background: var(--blut-bg);
+        border-color: var(--blut-primary);
+        color: var(--blut-primary);
+    }
+
+/* ===== ساختار اصلی ===== */
+.app-wrapper {
+    display: flex;
+    min-height: calc(100vh - var(--navbar-height));
+    position: relative;
+}
+
+/* ===== سایدبار ===== */
+.sidebar {
+    width: var(--sidebar-width);
+    background: var(--blut-sidebar);
+    padding: 1rem 0;
+    overflow-y: auto;
+    flex-shrink: 0;
+    transition: margin-right 0.25s ease;
+}
+
+    .sidebar::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .sidebar::-webkit-scrollbar-track {
+        background: var(--blut-sidebar);
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+        background: var(--blut-sidebar-hover);
+        border-radius: 3px;
+    }
+
+    .sidebar .nav {
+        padding: 0;
+    }
+
+    .sidebar .nav-link {
+        color: #CBD5E1;
+        padding: 0.65rem 1.25rem;
+        font-size: 14px;
+        display: block;
+        text-decoration: none;
+        border-right: 3px solid transparent;
+        transition: all 0.15s ease;
+    }
+
+        .sidebar .nav-link:hover {
+            background: var(--blut-sidebar-hover);
+            color: #FFFFFF;
+        }
+
+        .sidebar .nav-link.active {
+            background: var(--blut-sidebar-active);
+            color: #FFFFFF;
+            border-right-color: var(--blut-accent);
+            font-weight: bold;
+        }
+
+.sidebar-title {
+    color: var(--blut-accent);
+    font-size: 11px;
+    font-weight: bold;
+    padding: 1rem 1.25rem 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-top: 1px solid var(--blut-sidebar-hover);
+    margin-top: 0.25rem;
+}
+
+    .sidebar-title:first-child {
+        border-top: none;
+        margin-top: 0;
+    }
+
+body.sidebar-collapsed .sidebar {
+    margin-right: calc(-1 * var(--sidebar-width));
+}
+
+.sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1020;
+    cursor: pointer;
+}
+
+body.sidebar-open .sidebar-backdrop {
+    display: block;
+}
+
+/* ===== تبلت و موبایل ===== */
+@media (max-width: 991.98px) {
+    .sidebar {
+        position: fixed;
+        top: var(--navbar-height);
+        right: 0;
+        bottom: 0;
+        z-index: 1025;
+        margin-right: calc(-1 * var(--sidebar-width));
+        box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+    }
+
+    body.sidebar-open .sidebar {
+        margin-right: 0;
+    }
+
+    .main-content {
+        padding: 1.25rem;
+        width: 100%;
+    }
+
+    body.sidebar-collapsed .sidebar {
+        margin-right: calc(-1 * var(--sidebar-width));
+    }
+}
+
+@media (max-width: 575.98px) {
+    :root {
+        --sidebar-width: 280px;
+    }
+
+    .main-content {
+        padding: 1rem;
+    }
+
+    .blut-navbar .navbar-brand {
+        font-size: 15px;
+    }
+
+    .blut-navbar .user-info {
+        display: none;
+    }
+
+    h1 {
+        font-size: 22px;
+    }
+
+    h2 {
+        font-size: 20px;
+    }
+
+    h3 {
+        font-size: 18px;
+    }
+
+    h4 {
+        font-size: 16px;
+    }
+}
+
+/* ===== محتوای اصلی ===== */
+.main-content {
+    flex: 1;
+    padding: 1.5rem 2rem;
+    min-width: 0;
+    overflow-x: hidden;
+}
+
+/* ===== کارت‌ها ===== */
+.stat-card,
+.card {
+    background: var(--blut-card);
+    border: 1px solid var(--blut-border);
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+.card-header {
+    background: transparent;
+    border-bottom: 1px solid var(--blut-border);
+    font-weight: bold;
+    padding: 0.85rem 1.25rem;
+    font-size: 15px;
+}
+
+.card-body {
+    padding: 1.25rem;
+}
+
+.card-footer {
+    background: transparent;
+    border-top: 1px solid var(--blut-border);
+    padding: 0.75rem 1.25rem;
+}
+
+.dashboard-stat {
+    background: var(--blut-card);
+    border-radius: 10px;
+    padding: 1.25rem;
+    border: 1px solid var(--blut-border);
+    border-right: 4px solid var(--blut-primary);
+}
+
+    .dashboard-stat .stat-label {
+        font-size: 13px;
+        color: var(--blut-text-muted);
+        margin-bottom: 0.5rem;
+    }
+
+    .dashboard-stat .stat-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: var(--blut-text);
+        margin: 0;
+    }
+
+/* ===== دکمه‌ها ===== */
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 14px;
+    padding: 0.45rem 1rem;
+}
+
+.btn-primary {
+    background: var(--blut-primary);
+    border-color: var(--blut-primary);
+    color: #FFFFFF;
+}
+
+    .btn-primary:hover,
+    .btn-primary:focus {
+        background: var(--blut-primary-hover);
+        border-color: var(--blut-primary-hover);
+        color: #FFFFFF;
+    }
+
+.btn-success {
+    background: var(--blut-success);
+    border-color: var(--blut-success);
+    color: #FFFFFF;
+}
+
+.btn-danger {
+    background: var(--blut-danger);
+    border-color: var(--blut-danger);
+    color: #FFFFFF;
+}
+
+.btn-warning {
+    background: var(--blut-warning);
+    border-color: var(--blut-warning);
+    color: #FFFFFF;
+}
+
+.btn-info {
+    background: var(--blut-info);
+    border-color: var(--blut-info);
+    color: #FFFFFF;
+}
+
+.btn-outline-primary {
+    color: var(--blut-primary);
+    border-color: var(--blut-primary);
+}
+
+    .btn-outline-primary:hover {
+        background: var(--blut-primary);
+        color: #FFFFFF;
+    }
+
+.btn-outline-secondary {
+    color: var(--blut-text-muted);
+    border-color: var(--blut-border);
+}
+
+    .btn-outline-secondary:hover {
+        background: var(--blut-bg);
+        color: var(--blut-text);
+    }
+
+/* ===== جداول ===== */
+.table {
+    margin-bottom: 0;
+    font-size: 14px;
+}
+
+    .table thead th {
+        font-weight: bold;
+        background: #F8FAFC;
+        border-bottom: 2px solid var(--blut-border);
+        color: var(--blut-text);
+        font-size: 13px;
+        padding: 0.85rem 1rem;
+        white-space: nowrap;
+    }
+
+    .table tbody td {
+        padding: 0.75rem 1rem;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--blut-border);
+    }
+
+.table-hover tbody tr:hover {
+    background: #F8FAFC;
+}
+
+/* ===== مودال ===== */
+.modal-content {
+    border-radius: 10px;
+    border: 1px solid var(--blut-border);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+}
+
+.modal-header {
+    background: #F8FAFC;
+    border-bottom: 1px solid var(--blut-border);
+    padding: 1rem 1.25rem;
+}
+
+.modal-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: var(--blut-text);
+}
+
+.modal-footer {
+    border-top: 1px solid var(--blut-border);
+    padding: 1rem 1.25rem;
+}
+
+/* ===== بج‌ها ===== */
+.badge {
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+    font-size: 12px;
+    border-radius: 5px;
+}
+
+    .badge.bg-success {
+        background: var(--blut-success);
+    }
+
+    .badge.bg-danger {
+        background: var(--blut-danger);
+    }
+
+    .badge.bg-warning {
+        background: var(--blut-warning);
+        color: #FFFFFF;
+    }
+
+    .badge.bg-info {
+        background: var(--blut-info);
+        color: #FFFFFF;
+    }
+
+    .badge.bg-primary {
+        background: var(--blut-primary);
+    }
+
+    .badge.bg-secondary {
+        background: var(--blut-text-muted);
+    }
+
+/* ===== فرم‌ها ===== */
+.form-control,
+.form-select {
+    border-radius: 6px;
+    border: 1px solid var(--blut-border);
+    padding: 0.5rem 0.85rem;
+    font-size: 14px;
+    background: #FFFFFF;
+}
+
+    .form-control:focus,
+    .form-select:focus {
+        border-color: var(--blut-primary);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        background: #FFFFFF;
+    }
+
+.form-label {
+    font-weight: 500;
+    color: var(--blut-text);
+    margin-bottom: 0.4rem;
+    font-size: 13px;
+}
+
+/* ===== Pagination ===== */
+.page-link {
+    color: var(--blut-text);
+    border: 1px solid var(--blut-border);
+    padding: 0.35rem 0.75rem;
+    font-size: 13px;
+    border-radius: 5px !important;
+    margin: 0 2px;
+}
+
+.page-item.active .page-link {
+    background: var(--blut-primary);
+    border-color: var(--blut-primary);
+    color: #FFFFFF;
+}
+
+.page-link:hover {
+    background: var(--blut-bg);
+    color: var(--blut-primary);
+}
+
+/* ===== صفحه ورود ===== */
+.auth-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--blut-bg);
+    padding: 1rem;
+}
+
+.auth-card {
+    background: var(--blut-card);
+    border: 1px solid var(--blut-border);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 420px;
+}
+
+.auth-logo {
+    width: 72px;
+    height: 72px;
+    background: var(--blut-primary);
+    color: #FFFFFF;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    font-weight: bold;
+    margin: 0 auto 1.5rem;
+}
+
+.auth-title {
+    font-weight: bold;
+    font-size: 20px;
+    text-align: center;
+    margin-bottom: 0.3rem;
+}
+
+.auth-subtitle {
+    color: var(--blut-text-muted);
+    font-size: 13px;
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.auth-footer {
+    text-align: center;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--blut-border);
+    color: var(--blut-text-muted);
+    font-size: 12px;
+}
+
+/* ===== هشدارها ===== */
+.alert {
+    border-radius: 6px;
+    font-size: 13px;
+    border: 1px solid;
+}
+
+.alert-danger {
+    background: #FEF2F2;
+    border-color: #FECACA;
+    color: var(--blut-danger);
+}
+
+.alert-success {
+    background: #F0FDF4;
+    border-color: #BBF7D0;
+    color: var(--blut-success);
+}
+
+.alert-warning {
+    background: #FFFBEB;
+    border-color: #FDE68A;
+    color: #92400E;
+}
+
+.alert-info {
+    background: #F0F9FF;
+    border-color: #BAE6FD;
+    color: #075985;
+}
+
+/* ===== متن‌ها ===== */
+.text-muted {
+    color: var(--blut-text-muted) !important;
+}
+
+.text-primary {
+    color: var(--blut-primary) !important;
+}
+
+.text-success {
+    color: var(--blut-success) !important;
+}
+
+.text-danger {
+    color: var(--blut-danger) !important;
+}
+
+.text-warning {
+    color: var(--blut-warning) !important;
+}
+
+.text-info {
+    color: var(--blut-info) !important;
+}
+
+/* ===== جدول ریسپانسیو ===== */
+@media (max-width: 767.98px) {
+    .table-responsive {
+        border-radius: 10px;
+        border: 1px solid var(--blut-border);
+    }
+
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 12px;
+    }
+
+    .dashboard-stat {
+        padding: 1rem;
+    }
+
+        .dashboard-stat .stat-value {
+            font-size: 20px;
+        }
+
+        .dashboard-stat .stat-label {
+            font-size: 12px;
+        }
+}
+
+/* ================================================
+   چت بلوط
+   ================================================ */
+
+.chat-wrap {
+    display: flex;
+    gap: 1rem;
+    height: calc(100vh - 170px);
+    min-height: 480px;
+}
+
+/* --- لیست مخاطبین --- */
+.chat-sidebar {
+    width: 300px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.chat-sidebar-header {
+    padding: 0.9rem 1.1rem;
+    font-weight: bold;
+    font-size: 15px;
+    border-bottom: 1px solid var(--blut-border);
+    background: #F8FAFC;
+}
+
+.chat-partner-list {
+    overflow-y: auto;
+    flex: 1;
+}
+
+.chat-partner-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    text-align: right;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--blut-border);
+    border-right: 3px solid transparent;
+    padding: 0.85rem 1.1rem;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+    .chat-partner-item:hover {
+        background: #F8FAFC;
+    }
+
+    .chat-partner-item.active {
+        background: rgba(37, 99, 235, 0.08);
+        border-right-color: var(--blut-primary);
+    }
+
+.chat-partner-name {
+    font-weight: bold;
+    font-size: 14px;
+    color: var(--blut-text);
+}
+
+.chat-partner-sub {
+    font-size: 12px;
+    color: var(--blut-text-muted);
+    margin-top: 2px;
+}
+
+/* --- بج پیام خوانده‌نشده --- */
+.chat-unread-badge {
+    background: var(--blut-danger);
+    color: #FFFFFF;
+    border-radius: 999px;
+    min-width: 22px;
+    height: 22px;
+    font-size: 12px;
+    font-weight: bold;
+    font-family: Arial, sans-serif;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 7px;
+    flex-shrink: 0;
+}
+
+/* --- بخش اصلی چت --- */
+.chat-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.chat-main-header {
+    padding: 0.9rem 1.1rem;
+    border-bottom: 1px solid var(--blut-border);
+    background: #F8FAFC;
+    font-weight: bold;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.chat-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--blut-primary);
+    color: #FFFFFF;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 15px;
+    flex-shrink: 0;
+}
+
+/* --- پیام‌ها --- */
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.25rem;
+    background: var(--blut-bg);
+}
+
+    .chat-messages::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .chat-messages::-webkit-scrollbar-thumb {
+        background: var(--blut-border);
+        border-radius: 3px;
+    }
+
+.msg-row {
+    display: flex;
+    margin-bottom: 0.9rem;
+    width: 100%;
+}
+
+    .msg-row.mine {
+        justify-content: flex-end;
+    }
+
+    .msg-row.other {
+        justify-content: flex-start;
+    }
+
+/*
+   اصلاح اصلی نمایش متن فارسی:
+   - از break-word به normal تغییر داده شده
+   - متن فارسی RTL است
+   - کلمات عادی در یک خط کنار هم قرار می‌گیرند
+   - فقط در صورت نیاز، متن خیلی بلند شکسته می‌شود
+*/
+.msg-bubble {
+    display: block;
+    width: fit-content;
+    max-width: 70%;
+    padding: 0.6rem 0.95rem;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.7;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    direction: rtl;
+    text-align: right;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: anywhere;
+}
+
+.msg-row.other .msg-bubble {
+    background: #FFFFFF;
+    border: 1px solid var(--blut-border);
+    border-top-right-radius: 4px;
+    color: var(--blut-text);
+}
+
+.msg-row.mine .msg-bubble {
+    background: var(--blut-primary);
+    color: #FFFFFF;
+    border-top-left-radius: 4px;
+}
+
+.msg-time {
+    font-size: 11px;
+    margin-top: 4px;
+    opacity: 0.7;
+    font-family: Arial, sans-serif;
+}
+
+.msg-row.mine .msg-time {
+    text-align: left;
+}
+
+.msg-row.other .msg-time {
+    text-align: right;
+}
+
+/* --- ورودی پیام --- */
+.chat-input-area {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border-top: 1px solid var(--blut-border);
+    background: #FFFFFF;
+}
+
+    .chat-input-area .form-control {
+        flex: 1 1 auto;
+        min-width: 0;
+        direction: rtl;
+        text-align: right;
+        white-space: nowrap;
+    }
+
+/* --- حالت خالی --- */
+.chat-empty {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--blut-text-muted);
+    gap: 0.75rem;
+}
+
+.chat-empty-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: #FFFFFF;
+    border: 1px solid var(--blut-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* --- دکمه مخاطبین (فقط موبایل) --- */
+.chat-partners-toggle {
+    display: none;
+}
+
+/* --- Backdrop چت (فقط موبایل) --- */
+.chat-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1020;
+    cursor: pointer;
+}
+
+/* --- چت در موبایل: تمام‌عرض + مخاطبین کشویی --- */
+@media (max-width: 767.98px) {
+
+    .chat-wrap {
+        display: block;
+        height: calc(100vh - 170px);
+    }
+
+    .chat-main {
+        width: 100%;
+        height: 100%;
+    }
+
+    .chat-partners-toggle {
+        display: inline-flex;
+    }
+
+    .chat-sidebar {
+        position: fixed;
+        top: var(--navbar-height);
+        right: 0;
+        bottom: 0;
+        width: 300px;
+        max-width: 85%;
+        z-index: 1025;
+        margin-right: -320px;
+        transition: margin-right 0.25s ease;
+        border-radius: 0;
+        box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+    }
+
+    body.chat-partners-open .chat-sidebar {
+        margin-right: 0;
+    }
+
+    body.chat-partners-open .chat-backdrop {
+        display: block;
+    }
+
+    .msg-bubble {
+        max-width: 85%;
+    }
+}

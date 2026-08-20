@@ -1,0 +1,178 @@
+﻿@{
+    ViewData["Title"] = "مدیریت جلسات";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0">جلسات کلاس: <span id="className"></span></h4>
+    <div>
+        <a href="/TeacherPanel/Index" class="btn btn-outline-secondary btn-sm">بازگشت</a>
+        <button class="btn btn-primary btn-sm" onclick="openCreateModal()">+ افزودن جلسه</button>
+    </div>
+</div>
+
+<div class="card stat-card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr><th>جلسه</th><th>تاریخ</th><th>ساعت</th><th>موضوع</th><th>وضعیت</th><th>عملیات</th></tr>
+            </thead>
+            <tbody id="tableBody"><tr><td colspan="6" class="text-center py-4">در حال بارگذاری...</td></tr></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="sessionModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">افزودن جلسه</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="sessionId" value="0" />
+                <div class="row g-3">
+                    <div class="col-md-3"><label class="form-label">شماره جلسه *</label><input type="number" id="sessionNumber" class="form-control" min="1" /></div>
+                    <div class="col-md-3"><label class="form-label">تاریخ *</label><input type="date" id="date" class="form-control" /></div>
+                    <div class="col-md-3"><label class="form-label">ساعت شروع *</label><input type="time" id="startTime" class="form-control" /></div>
+                    <div class="col-md-3"><label class="form-label">ساعت پایان *</label><input type="time" id="endTime" class="form-control" /></div>
+                    <div class="col-md-8"><label class="form-label">موضوع</label><input type="text" id="topic" class="form-control" /></div>
+                    <div class="col-md-4">
+                        <label class="form-label">وضعیت</label>
+                        <select id="status" class="form-select">
+                            <option value="1">برنامه‌ریزی شده</option>
+                            <option value="2">برگزار شده</option>
+                            <option value="3">لغو شده</option>
+                            <option value="4">به تعویق افتاده</option>
+                        </select>
+                    </div>
+                    <div class="col-12"><label class="form-label">توضیحات</label><textarea id="description" class="form-control" rows="2"></textarea></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-success" onclick="saveSession()"> ذخیره</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const classId = @ViewData["ClassId"];
+        let modalInstance = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            modalInstance = new bootstrap.Modal(document.getElementById('sessionModal'));
+            loadClassName();
+            loadSessions();
+        });
+
+        async function loadClassName() {
+            try {
+                const c = await ajaxGet('/Class/GetById?id=' + classId);
+                document.getElementById('className').textContent = c.name;
+            } catch (e) { }
+        }
+
+        async function loadSessions() {
+            try {
+                const sessions = await ajaxGet('/TeacherPanel/GetSessions?classId=' + classId);
+                const tbody = document.getElementById('tableBody');
+
+                if (!sessions || sessions.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">هنوز جلسه‌ای ثبت نشده است.</td></tr>';
+                    return;
+                }
+
+                const statusMap = { 1: ['برنامه‌ریزی شده', 'info'], 2: ['برگزار شده', 'success'], 3: ['لغو شده', 'danger'], 4: ['به تعویق افتاده', 'warning'] };
+
+                tbody.innerHTML = sessions.map(s => `
+                        <tr>
+                            <td><b>جلسه ${s.sessionNumber}</b></td>
+                            <td>${new Date(s.date).toLocaleDateString('fa-IR')}</td>
+                            <td>${(s.startTime || '').substring(0, 5)} - ${(s.endTime || '').substring(0, 5)}</td>
+                            <td>${escapeHtml(s.topic) || '-'}</td>
+                            <td><span class="badge bg-${statusMap[s.status][1]}">${statusMap[s.status][0]}</span></td>
+                            <td>
+                                <a href="/TeacherPanel/Attendance?sessionId=${s.id}" class="btn btn-sm btn-success"> حضور غیاب</a>
+                                <a href="/TeacherPanel/Scores?sessionId=${s.id}" class="btn btn-sm btn-warning"> نمرات</a>
+                                <a href="/TeacherPanel/Exercises?sessionId=${s.id}" class="btn btn-sm btn-info"> تکالیف</a>
+                                <button class="btn btn-sm btn-outline-primary" onclick="openEditModal(${s.id})"></button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteSession(${s.id})"></button>
+                            </td>
+                        </tr>`).join('');
+            } catch (e) { showToast('خطا در دریافت جلسات', false); }
+        }
+
+        function openCreateModal() {
+            document.getElementById('modalTitle').textContent = 'افزودن جلسه';
+            ['sessionId', 'sessionNumber', 'date', 'startTime', 'endTime', 'topic', 'description'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('sessionId').value = 0;
+            document.getElementById('status').value = '1';
+            modalInstance.show();
+        }
+
+        async function openEditModal(id) {
+            try {
+                const list = await ajaxGet('/TeacherPanel/GetSessions?classId=' + classId);
+                const s = list.find(x => x.id === id);
+                if (!s) return;
+                document.getElementById('modalTitle').textContent = 'ویرایش جلسه';
+                document.getElementById('sessionId').value = s.id;
+                document.getElementById('sessionNumber').value = s.sessionNumber;
+                document.getElementById('date').value = s.date ? s.date.substring(0, 10) : '';
+                document.getElementById('startTime').value = (s.startTime || '').substring(0, 5);
+                document.getElementById('endTime').value = (s.endTime || '').substring(0, 5);
+                document.getElementById('topic').value = s.topic || '';
+                document.getElementById('description').value = s.description || '';
+                document.getElementById('status').value = s.status.toString();
+                modalInstance.show();
+            } catch (e) { showToast('خطا در دریافت جلسه', false); }
+        }
+
+        async function saveSession() {
+            const id = parseInt(document.getElementById('sessionId').value);
+            const st = document.getElementById('startTime').value;
+            const en = document.getElementById('endTime').value;
+
+            const data = {
+                id: id,
+                classId: classId,
+                sessionNumber: parseInt(document.getElementById('sessionNumber').value),
+                date: document.getElementById('date').value || null,
+                startTime: st ? (st.length === 5 ? st + ':00' : st) : null,
+                endTime: en ? (en.length === 5 ? en + ':00' : en) : null,
+                topic: document.getElementById('topic').value.trim(),
+                description: document.getElementById('description').value.trim(),
+                status: parseInt(document.getElementById('status').value)
+            };
+
+            if (!data.sessionNumber || !data.date || !data.startTime || !data.endTime) {
+                showToast('شماره جلسه، تاریخ و ساعت‌ها الزامی هستند.', false);
+                return;
+            }
+
+            try {
+                const res = await ajaxPost(id === 0 ? '/TeacherPanel/CreateSession' : '/TeacherPanel/UpdateSession', data);
+                showToast(res.message, res.success);
+                if (res.success) { modalInstance.hide(); loadSessions(); }
+            } catch (e) { showToast('خطا در ارتباط با سرور', false); }
+        }
+
+        async function deleteSession(id) {
+            if (!confirm('جلسه همراه با حضور و غیاب، نمرات و تکالیف آن حذف می‌شود. مطمئن هستید؟')) return;
+            try {
+                const res = await ajaxPost('/TeacherPanel/DeleteSession', { id });
+                showToast(res.message, res.success);
+                if (res.success) loadSessions();
+            } catch (e) { showToast('خطا در ارتباط با سرور', false); }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+    </script>
+}

@@ -1,0 +1,204 @@
+﻿@{
+    ViewData["Title"] = "مدیریت دوره‌ها";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0">مدیریت دوره‌ها</h4>
+    <button class="btn btn-primary" onclick="openCreateModal()">+ افزودن دوره</button>
+</div>
+
+<div class="card stat-card p-3 mb-3">
+    <div class="row g-2">
+        <div class="col-md-9"><input type="text" id="searchInput" class="form-control" placeholder="جستجو بر اساس عنوان یا سطح..." /></div>
+        <div class="col-md-3"><button class="btn btn-outline-secondary w-100" onclick="loadCourses(1)"> بروزرسانی</button></div>
+    </div>
+</div>
+
+<div class="card stat-card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr><th>#</th><th>عنوان</th><th>سطح</th><th>ظرفیت</th><th>تعداد جلسات</th><th>قیمت (تومان)</th><th>شروع</th><th>پایان</th><th>وضعیت</th><th>عملیات</th></tr>
+            </thead>
+            <tbody id="tableBody"><tr><td colspan="10" class="text-center py-4">در حال بارگذاری...</td></tr></tbody>
+        </table>
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center bg-white">
+        <span id="pageInfo" class="small text-muted"></span>
+        <ul class="pagination pagination-sm mb-0" id="pagination"></ul>
+    </div>
+</div>
+
+<div class="modal fade" id="courseModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">افزودن دوره</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="courseId" value="0" />
+                <div class="row g-3">
+                    <div class="col-md-8"><label class="form-label">عنوان دوره *</label><input type="text" id="title" class="form-control" /></div>
+                    <div class="col-md-4">
+                        <label class="form-label">سطح</label>
+                        <select id="level" class="form-select">
+                            <option value="مقدماتی">مقدماتی</option>
+                            <option value="متوسط">متوسط</option>
+                            <option value="پیشرفته">پیشرفته</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4"><label class="form-label">ظرفیت *</label><input type="number" id="capacity" class="form-control" min="1" /></div>
+                    <div class="col-md-4"><label class="form-label">مدت (ساعت) *</label><input type="number" id="duration" class="form-control" min="1" /></div>
+                    <div class="col-md-4"><label class="form-label">تعداد جلسات *</label><input type="number" id="numberOfSessions" class="form-control" min="1" /></div>
+                    <div class="col-md-6"><label class="form-label">قیمت (تومان) *</label><input type="number" id="price" class="form-control" min="0" step="500" /></div>
+                    <div class="col-md-3"><label class="form-label">تاریخ شروع *</label><input type="date" id="startDate" class="form-control" /></div>
+                    <div class="col-md-3"><label class="form-label">تاریخ پایان *</label><input type="date" id="endDate" class="form-control" /></div>
+                    <div class="col-md-6">
+                        <label class="form-label">وضعیت</label>
+                        <select id="status" class="form-select"><option value="1">فعال</option><option value="0">غیرفعال</option></select>
+                    </div>
+                    <div class="col-12"><label class="form-label">توضیحات</label><textarea id="description" class="form-control" rows="2"></textarea></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-success" onclick="saveCourse()"> ذخیره</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let currentPage = 1;
+        let modalInstance = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            modalInstance = new bootstrap.Modal(document.getElementById('courseModal'));
+            loadCourses(1);
+            let timer;
+            document.getElementById('searchInput').addEventListener('input', () => {
+                clearTimeout(timer);
+                timer = setTimeout(() => loadCourses(1), 400);
+            });
+        });
+
+        async function loadCourses(page) {
+            currentPage = page;
+            const search = document.getElementById('searchInput').value.trim();
+            try {
+                const res = await ajaxGet(`/Course/GetCourses?pageNumber=${page}&pageSize=10&search=${encodeURIComponent(search)}`);
+                renderTable(res);
+                renderPagination(res);
+            } catch (e) { showToast('خطا در دریافت اطلاعات', false); }
+        }
+
+        function renderTable(res) {
+            const tbody = document.getElementById('tableBody');
+            if (!res.items || res.items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-muted">هیچ دوره‌ای یافت نشد.</td></tr>';
+                document.getElementById('pageInfo').textContent = '';
+                return;
+            }
+            tbody.innerHTML = res.items.map((c, i) => `
+                    <tr>
+                        <td>${(res.pageNumber - 1) * res.pageSize + i + 1}</td>
+                        <td>${escapeHtml(c.title)}</td>
+                        <td>${escapeHtml(c.level) || '-'}</td>
+                        <td>${c.capacity}</td>
+                        <td>${c.numberOfSessions}</td>
+                        <td>${Number(c.price).toLocaleString('fa-IR')}</td>
+                        <td>${new Date(c.startDate).toLocaleDateString('fa-IR')}</td>
+                        <td>${new Date(c.endDate).toLocaleDateString('fa-IR')}</td>
+                        <td>${c.status === 1 ? '<span class="badge bg-success">فعال</span>' : '<span class="badge bg-danger">غیرفعال</span>'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="openEditModal(${c.id})"> ویرایش</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteCourse(${c.id})"> حذف</button>
+                        </td>
+                    </tr>`).join('');
+            document.getElementById('pageInfo').textContent = `صفحه ${res.pageNumber} از ${res.totalPages} - مجموع ${res.totalCount} دوره`;
+        }
+
+        function renderPagination(res) {
+            const ul = document.getElementById('pagination');
+            ul.innerHTML = '';
+            for (let p = 1; p <= res.totalPages; p++) {
+                const li = document.createElement('li');
+                li.className = 'page-item' + (p === res.pageNumber ? ' active' : '');
+                li.innerHTML = `<a class="page-link" href="javascript:void(0)" onclick="loadCourses(${p})">${p}</a>`;
+                ul.appendChild(li);
+            }
+        }
+
+        function openCreateModal() {
+            document.getElementById('modalTitle').textContent = 'افزودن دوره';
+            ['courseId', 'title', 'capacity', 'duration', 'numberOfSessions', 'price', 'startDate', 'endDate', 'description'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('courseId').value = 0;
+            document.getElementById('level').value = 'مقدماتی';
+            document.getElementById('status').value = '1';
+            modalInstance.show();
+        }
+
+        async function openEditModal(id) {
+            try {
+                const c = await ajaxGet('/Course/GetById?id=' + id);
+                document.getElementById('modalTitle').textContent = 'ویرایش دوره';
+                document.getElementById('courseId').value = c.id;
+                document.getElementById('title').value = c.title || '';
+                document.getElementById('level').value = c.level || 'مقدماتی';
+                document.getElementById('capacity').value = c.capacity;
+                document.getElementById('duration').value = c.duration;
+                document.getElementById('numberOfSessions').value = c.numberOfSessions;
+                document.getElementById('price').value = c.price;
+                document.getElementById('startDate').value = c.startDate ? c.startDate.substring(0, 10) : '';
+                document.getElementById('endDate').value = c.endDate ? c.endDate.substring(0, 10) : '';
+                document.getElementById('description').value = c.description || '';
+                document.getElementById('status').value = c.status.toString();
+                modalInstance.show();
+            } catch (e) { showToast('خطا در دریافت اطلاعات', false); }
+        }
+
+        async function saveCourse() {
+            const id = parseInt(document.getElementById('courseId').value);
+            const data = {
+                id: id,
+                title: document.getElementById('title').value.trim(),
+                level: document.getElementById('level').value,
+                capacity: parseInt(document.getElementById('capacity').value),
+                duration: parseInt(document.getElementById('duration').value),
+                numberOfSessions: parseInt(document.getElementById('numberOfSessions').value),
+                price: parseFloat(document.getElementById('price').value || 0),
+                startDate: document.getElementById('startDate').value || null,
+                endDate: document.getElementById('endDate').value || null,
+                description: document.getElementById('description').value.trim(),
+                status: parseInt(document.getElementById('status').value)
+            };
+
+            if (!data.title || !data.capacity || !data.duration || !data.numberOfSessions) { showToast('عنوان، ظرفیت، مدت و تعداد جلسات الزامی هستند.', false); return; }
+            if (!data.startDate || !data.endDate) { showToast('تاریخ شروع و پایان الزامی هستند.', false); return; }
+
+            try {
+                const res = await ajaxPost(id === 0 ? '/Course/Create' : '/Course/Update', data);
+                showToast(res.message, res.success);
+                if (res.success) { modalInstance.hide(); loadCourses(currentPage); }
+            } catch (e) { showToast('خطا در ارتباط با سرور', false); }
+        }
+
+        async function deleteCourse(id) {
+            if (!confirm('آیا از حذف این دوره مطمئن هستید؟')) return;
+            try {
+                const res = await ajaxPost('/Course/Delete', { id: id });
+                showToast(res.message, res.success);
+                if (res.success) loadCourses(currentPage);
+            } catch (e) { showToast('خطا در ارتباط با سرور', false); }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+    </script>
+}

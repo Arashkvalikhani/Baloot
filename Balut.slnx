@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Balut.Application/Balut.Application.csproj" />
+  <Project Path="Balut.Data/Balut.Data.csproj" />
+  <Project Path="Balut.Web/Balut.Web.csproj" />
+</Solution>

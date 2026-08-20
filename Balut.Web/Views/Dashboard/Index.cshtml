@@ -1,0 +1,88 @@
+﻿@model AdminDashboardViewModel
+@{
+    ViewData["Title"] = "داشبورد مدیریت";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1">داشبورد مدیریت</h2>
+        <p class="text-muted small mb-0">خلاصه وضعیت آموزشگاه بلوط در یک نگاه</p>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-3 col-6">
+        <div class="dashboard-stat">
+            <div class="stat-label">دانشجویان فعال</div>
+            <h3 class="stat-value">@Model.TotalStudents</h3>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="dashboard-stat" style="border-right-color: var(--blut-info);">
+            <div class="stat-label">والدین</div>
+            <h3 class="stat-value">@Model.TotalParents</h3>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="dashboard-stat" style="border-right-color: var(--blut-success);">
+            <div class="stat-label">معلمان</div>
+            <h3 class="stat-value">@Model.TotalTeachers</h3>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="dashboard-stat" style="border-right-color: var(--blut-accent);">
+            <div class="stat-label">دوره‌ها</div>
+            <h3 class="stat-value">@Model.TotalCourses</h3>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-6">
+        <div class="dashboard-stat">
+            <div class="stat-label">کلاس‌ها</div>
+            <h3 class="stat-value">@Model.TotalClasses</h3>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="dashboard-stat">
+            <div class="stat-label">جلسات</div>
+            <h3 class="stat-value">@Model.TotalSessions</h3>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="dashboard-stat" style="border-right-color: var(--blut-success);">
+            <div class="stat-label">دوره‌های فعال</div>
+            <h3 class="stat-value">@Model.ActiveCourses</h3>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="dashboard-stat" style="border-right-color: var(--blut-danger);">
+            <div class="stat-label">رو به اتمام</div>
+            <h3 class="stat-value">@Model.EndingSoonCourses</h3>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-6">
+        <div class="dashboard-stat" style="border-right-color: var(--blut-danger);">
+            <div class="stat-label">کل غیبت‌ها</div>
+            <h3 class="stat-value">@Model.TotalAbsences</h3>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="dashboard-stat" style="border-right-color: var(--blut-primary);">
+            <div class="stat-label">میانگین نمرات</div>
+            <h3 class="stat-value">@Model.AverageScore</h3>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="dashboard-stat" style="border-right-color: var(--blut-warning);">
+            <div class="stat-label">تکالیف در انتظار</div>
+            <h3 class="stat-value">@Model.PendingSubmissions</h3>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="dashboard-stat" style="border-right-color: var(--blut-info);">
+            <div class="stat-label">پیام‌های خوانده‌نشده</div>
+            <h3 class="stat-value">@Model.UnreadMessages</h3>
+        </div>
+    </div>
+</div>

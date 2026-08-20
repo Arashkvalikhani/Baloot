@@ -1,0 +1,82 @@
+﻿@{
+    ViewData["Title"] = "لاگ‌های سیستم";
+}
+
+<h4 class="fw-bold mb-4"> لاگ‌های سیستم (Audit Logs)</h4>
+
+<div class="card stat-card p-3 mb-3">
+    <input type="text" id="searchInput" class="form-control" placeholder="جستجو در عملیات، موجودیت یا جزئیات..." />
+</div>
+
+<div class="card stat-card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr><th>زمان</th><th>کاربر</th><th>عملیات</th><th>موجودیت</th><th>IP</th><th>جزئیات</th></tr>
+            </thead>
+            <tbody id="tableBody"><tr><td colspan="6" class="text-center py-4">در حال بارگذاری...</td></tr></tbody>
+        </table>
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center bg-white">
+        <span id="pageInfo" class="small text-muted"></span>
+        <ul class="pagination pagination-sm mb-0" id="pagination"></ul>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let currentPage = 1;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadLogs(1);
+            let timer;
+            document.getElementById('searchInput').addEventListener('input', () => {
+                clearTimeout(timer);
+                timer = setTimeout(() => loadLogs(1), 400);
+            });
+        });
+
+        async function loadLogs(page) {
+            currentPage = page;
+            const search = document.getElementById('searchInput').value.trim();
+            try {
+                const res = await ajaxGet(`/SuperAdmin/GetAuditLogs?pageNumber=${page}&pageSize=20&search=${encodeURIComponent(search)}`);
+                const tbody = document.getElementById('tableBody');
+
+                if (!res.items || res.items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">لاگی یافت نشد.</td></tr>';
+                    document.getElementById('pageInfo').textContent = '';
+                    return;
+                }
+
+                tbody.innerHTML = res.items.map(l => `
+                        <tr>
+                            <td class="small">${new Date(l.timestamp).toLocaleString('fa-IR')}</td>
+                            <td><b>${escapeHtml(l.userName) || '-'}</b></td>
+                            <td><span class="badge bg-secondary">${escapeHtml(l.action)}</span></td>
+                            <td>${escapeHtml(l.entityType)} <span class="text-muted small">#${escapeHtml(l.entityId) || ''}</span></td>
+                            <td class="small">${escapeHtml(l.ipAddress) || '-'}</td>
+                            <td class="small">${escapeHtml(l.details) || '-'}</td>
+                        </tr>`).join('');
+
+                document.getElementById('pageInfo').textContent = `صفحه ${res.pageNumber} از ${res.totalPages} - مجموع ${res.totalCount} لاگ`;
+
+                const ul = document.getElementById('pagination');
+                ul.innerHTML = '';
+                for (let p = 1; p <= res.totalPages; p++) {
+                    const li = document.createElement('li');
+                    li.className = 'page-item' + (p === res.pageNumber ? ' active' : '');
+                    li.innerHTML = `<a class="page-link" href="javascript:void(0)" onclick="loadLogs(${p})">${p}</a>`;
+                    ul.appendChild(li);
+                }
+            } catch (e) { showToast('خطا در دریافت لاگ‌ها', false); }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+    </script>
+}

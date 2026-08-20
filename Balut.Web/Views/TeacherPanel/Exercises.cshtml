@@ -1,0 +1,133 @@
+﻿@{
+    ViewData["Title"] = "تکالیف جلسه";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0"> تکالیف جلسه</h4>
+    <button class="btn btn-primary btn-sm" onclick="openCreateModal()">+ افزودن تمرین</button>
+</div>
+
+<div class="card stat-card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr><th>عنوان</th><th>مهلت</th><th>پیوست</th><th>عملیات</th></tr>
+            </thead>
+            <tbody id="tableBody"><tr><td colspan="4" class="text-center py-4">در حال بارگذاری...</td></tr></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="exerciseModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">افزودن تمرین</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-8"><label class="form-label">عنوان *</label><input type="text" id="exTitle" class="form-control" /></div>
+                    <div class="col-md-4"><label class="form-label">مهلت ارسال</label><input type="datetime-local" id="exDeadline" class="form-control" /></div>
+                    <div class="col-12"><label class="form-label">توضیحات</label><textarea id="exDescription" class="form-control" rows="3"></textarea></div>
+                    <div class="col-12"><label class="form-label">فایل پیوست (اختیاری)</label><input type="file" id="exFile" class="form-control" /></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-success" onclick="saveExercise()"> ذخیره</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const sessionId = @ViewData["SessionId"];
+        let modalInstance = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            modalInstance = new bootstrap.Modal(document.getElementById('exerciseModal'));
+            loadExercises();
+        });
+
+        async function loadExercises() {
+            try {
+                const items = await ajaxGet('/TeacherPanel/GetExercises?sessionId=' + sessionId);
+                const tbody = document.getElementById('tableBody');
+
+                if (!items || items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted">تمرینی ثبت نشده است.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = items.map(e => `
+                        <tr>
+                            <td><b>${escapeHtml(e.title)}</b><div class="small text-muted">${escapeHtml(e.description) || ''}</div></td>
+                            <td>${e.deadline ? new Date(e.deadline).toLocaleString('fa-IR') : '-'}</td>
+                            <td>${e.attachmentId ? `<a href="/File/Download/${e.attachmentId}" class="btn btn-sm btn-outline-secondary">📎 ${escapeHtml(e.attachmentName)}</a>` : '-'}</td>
+                            <td>
+                                <a href="/TeacherPanel/Submissions?exerciseId=${e.id}" class="btn btn-sm btn-success"> مشاهده ارسال‌ها</a>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteExercise(${e.id})"></button>
+                            </td>
+                        </tr>`).join('');
+            } catch (e) { showToast('خطا در دریافت تکالیف', false); }
+        }
+
+        function openCreateModal() {
+            ['exTitle', 'exDeadline', 'exDescription'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('exFile').value = '';
+            modalInstance.show();
+        }
+
+        async function saveExercise() {
+            const title = document.getElementById('exTitle').value.trim();
+            if (!title) { showToast('عنوان تمرین الزامی است.', false); return; }
+
+            const data = {
+                sessionId: sessionId,
+                title: title,
+                description: document.getElementById('exDescription').value.trim(),
+                deadline: document.getElementById('exDeadline').value || null
+            };
+
+            try {
+                const res = await ajaxPost('/TeacherPanel/CreateExercise', data);
+                showToast(res.message, res.success);
+
+                if (res.success) {
+                    const fileInput = document.getElementById('exFile');
+                    if (fileInput.files.length > 0) {
+                        const fd = new FormData();
+                        fd.append('exerciseId', res.data.id);
+                        fd.append('file', fileInput.files[0]);
+                        const up = await fetch('/TeacherPanel/UploadExerciseFile', {
+                            method: 'POST',
+                            headers: { 'RequestVerificationToken': getAntiforgeryToken() },
+                            body: fd
+                        }).then(r => r.json());
+                        showToast(up.message, up.success);
+                    }
+                    modalInstance.hide();
+                    loadExercises();
+                }
+            } catch (e) { showToast('خطا در ارتباط با سرور', false); }
+        }
+
+        async function deleteExercise(id) {
+            if (!confirm('تمرین همراه با ارسال‌های آن حذف می‌شود. مطمئن هستید؟')) return;
+            try {
+                const res = await ajaxPost('/TeacherPanel/DeleteExercise', { id });
+                showToast(res.message, res.success);
+                if (res.success) loadExercises();
+            } catch (e) { showToast('خطا در ارتباط با سرور', false); }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+    </script>
+}

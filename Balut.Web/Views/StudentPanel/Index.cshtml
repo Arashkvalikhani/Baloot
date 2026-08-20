@@ -1,0 +1,309 @@
+﻿@{
+    ViewData["Title"] = "پنل دانشجو";
+}
+
+<h4 class="fw-bold mb-4"> پنل دانشجو</h4>
+
+<div class="row g-3 mb-4" id="overviewCards"></div>
+
+<ul class="nav nav-pills mb-3">
+    <li class="nav-item"><button class="nav-link active" onclick="showTab('courses', this)"> دوره‌های من</button></li>
+    <li class="nav-item"><button class="nav-link" onclick="showTab('attendance', this)"> حضور و غیاب</button></li>
+    <li class="nav-item"><button class="nav-link" onclick="showTab('scores', this)"> نمرات</button></li>
+    <li class="nav-item"><button class="nav-link" onclick="showTab('exercises', this)"> تکالیف</button></li>
+    <li class="nav-item"><button class="nav-link" onclick="showTab('notifications', this)">🔔 اعلان‌ها <span id="unreadBadge" class="badge bg-danger"></span></button></li>
+</ul>
+
+<div id="tab-courses" class="tab-pane-content">
+    <div class="card stat-card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light"><tr><th>کلاس</th><th>دوره</th><th>تاریخ ثبت‌نام</th><th>وضعیت</th></tr></thead>
+                <tbody id="coursesBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="tab-attendance" class="tab-pane-content" style="display:none">
+    <div class="card stat-card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light"><tr><th>کلاس</th><th>جلسه</th><th>تاریخ</th><th>وضعیت</th></tr></thead>
+                <tbody id="attendanceBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="tab-scores" class="tab-pane-content" style="display:none">
+    <div class="card stat-card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light"><tr><th>کلاس</th><th>جلسه</th><th>نمره</th><th>توضیح</th></tr></thead>
+                <tbody id="scoresBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ===== تب تکالیف ===== -->
+<div id="tab-exercises" class="tab-pane-content" style="display:none">
+    <div class="card stat-card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>تمرین</th>
+                        <th>کلاس / جلسه</th>
+                        <th>مهلت ارسال</th>
+                        <th>پیوست تمرین</th>
+                        <th>وضعیت پاسخ شما</th>
+                        <th>عملیات</th>
+                    </tr>
+                </thead>
+                <tbody id="exercisesBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="tab-notifications" class="tab-pane-content" style="display:none">
+    <div class="mb-2 text-end">
+        <button class="btn btn-sm btn-outline-secondary" onclick="markAllRead()"> خواندن همه</button>
+    </div>
+    <div id="notificationsList"></div>
+</div>
+
+<!-- مودال ارسال پاسخ تمرین -->
+<div class="modal fade" id="submitModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"> ارسال پاسخ تمرین: <span id="submitExerciseTitle"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="submitExerciseId" value="0" />
+                <div id="submitExerciseDesc" class="alert alert-light border small mb-3"></div>
+                <div class="mb-3">
+                    <label class="form-label">متن پاسخ</label>
+                    <textarea id="submitText" class="form-control" rows="4" placeholder="پاسخ خود را بنویسید..."></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">فایل پاسخ (اختیاری)</label>
+                    <input type="file" id="submitFile" class="form-control" />
+                    <div class="form-text">فرمت‌های مجاز: jpg, png, pdf, docx, txt, zip, mp4 و... (حداکثر 50MB)</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-success" onclick="submitExercise()"> ارسال پاسخ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let enrollments = [], attendance = [], scores = [], notifications = [], exercises = [];
+        let submitModalInstance = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            submitModalInstance = new bootstrap.Modal(document.getElementById('submitModal'));
+            await Promise.all([loadEnrollments(), loadAttendance(), loadScores(), loadExercises(), loadNotifications()]);
+            renderOverview();
+        });
+
+        function showTab(name, btn) {
+            document.querySelectorAll('.tab-pane-content').forEach(d => d.style.display = 'none');
+            document.getElementById('tab-' + name).style.display = 'block';
+            document.querySelectorAll('.nav-pills .nav-link').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        async function loadEnrollments() {
+            enrollments = await ajaxGet('/StudentPanel/GetMyEnrollments');
+            document.getElementById('coursesBody').innerHTML = enrollments.length === 0
+                ? '<tr><td colspan="4" class="text-center py-4 text-muted">در هیچ دوره‌ای ثبت‌نام نکرده‌اید.</td></tr>'
+                : enrollments.map(e => `
+                        <tr>
+                            <td><b>${escapeHtml(e.className)}</b></td>
+                            <td>${escapeHtml(e.courseTitle)}</td>
+                            <td>${new Date(e.enrollmentDate).toLocaleDateString('fa-IR')}</td>
+                            <td>${e.status === 1 ? '<span class="badge bg-success">فعال</span>' : '<span class="badge bg-secondary">انصراف</span>'}</td>
+                        </tr>`).join('');
+        }
+
+        async function loadAttendance() {
+            attendance = await ajaxGet('/StudentPanel/GetMyAttendance');
+            document.getElementById('attendanceBody').innerHTML = attendance.length === 0
+                ? '<tr><td colspan="4" class="text-center py-4 text-muted">رکوردی ثبت نشده است.</td></tr>'
+                : attendance.map(a => {
+                    let badge = a.status === 1 ? '<span class="badge bg-success">حاضر</span>'
+                        : a.status === 2 ? '<span class="badge bg-danger">غایب</span>'
+                            : `<span class="badge bg-warning">تأخیر ${a.lateMinutes || 0} دقیقه</span>`;
+                    return `
+                        <tr>
+                            <td>${escapeHtml(a.className)}</td>
+                            <td>جلسه ${a.sessionNumber}</td>
+                            <td>${new Date(a.date).toLocaleDateString('fa-IR')}</td>
+                            <td>${badge}</td>
+                        </tr>`;
+                }).join('');
+        }
+
+        async function loadScores() {
+            scores = await ajaxGet('/StudentPanel/GetMyScores');
+            document.getElementById('scoresBody').innerHTML = scores.length === 0
+                ? '<tr><td colspan="4" class="text-center py-4 text-muted">نمره‌ای ثبت نشده است.</td></tr>'
+                : scores.map(s => `
+                        <tr>
+                            <td>${escapeHtml(s.className)}</td>
+                            <td>جلسه ${s.sessionNumber}</td>
+                            <td><b class="${s.scoreValue >= 5 ? 'text-success' : 'text-danger'}">${s.scoreValue} / 10</b></td>
+                            <td>${escapeHtml(s.comments) || '-'}</td>
+                        </tr>`).join('');
+        }
+
+        // ===== تکالیف =====
+        async function loadExercises() {
+            exercises = await ajaxGet('/StudentPanel/GetMyExercises');
+            const tbody = document.getElementById('exercisesBody');
+
+            if (!exercises || exercises.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">تمرینی برای کلاس‌های شما ثبت نشده است.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = exercises.map(ex => {
+                const hasSubmission = ex.submissionId !== null;
+
+                let statusBadge;
+                if (!hasSubmission) statusBadge = '<span class="badge bg-secondary">ارسال نشده</span>';
+                else if (ex.submissionStatus === 2) statusBadge = `<span class="badge bg-success">بررسی شده - نمره ${ex.submissionScore}</span>`;
+                else statusBadge = '<span class="badge bg-warning">در انتظار بررسی</span>';
+
+                let resultInfo = '';
+                if (hasSubmission && ex.submissionStatus === 2) {
+                    resultInfo = `<div class="small text-muted mt-1">نظر معلم: ${escapeHtml(ex.teacherComment) || '-'}</div>`;
+                    if (ex.submissionAttachmentId) {
+                        resultInfo += `<div class="small mt-1"><a href="/File/Download/${ex.submissionAttachmentId}">📎 پاسخ ارسال‌شده شما</a></div>`;
+                    }
+                }
+
+                return `
+                    <tr>
+                        <td>
+                            <b>${escapeHtml(ex.title)}</b>
+                            <div class="small text-muted">${escapeHtml(ex.description) || ''}</div>
+                        </td>
+                        <td>${escapeHtml(ex.className)}<br><span class="small text-muted">جلسه ${ex.sessionNumber}</span></td>
+                        <td>${ex.deadline ? new Date(ex.deadline).toLocaleString('fa-IR') : '-'}</td>
+                        <td>${ex.exerciseAttachmentId
+                        ? `<a href="/File/Download/${ex.exerciseAttachmentId}" class="btn btn-sm btn-outline-secondary">📎 ${escapeHtml(ex.exerciseAttachmentName)}</a>`
+                        : '-'}</td>
+                        <td>${statusBadge}${resultInfo}</td>
+                        <td>${hasSubmission
+                        ? '<span class="text-muted small">پاسخ ثبت شده</span>'
+                        : `<button class="btn btn-sm btn-primary" onclick="openSubmitModal(${ex.exerciseId})"> ارسال پاسخ</button>`}</td>
+                    </tr>`;
+            }).join('');
+        }
+
+        function openSubmitModal(exerciseId) {
+            const ex = exercises.find(x => x.exerciseId === exerciseId);
+            if (!ex) return;
+
+            document.getElementById('submitExerciseId').value = ex.exerciseId;
+            document.getElementById('submitExerciseTitle').textContent = ex.title;
+            document.getElementById('submitExerciseDesc').innerHTML =
+                `<b>${escapeHtml(ex.className)}</b> - جلسه ${ex.sessionNumber}` +
+                (ex.deadline ? ` | مهلت: ${new Date(ex.deadline).toLocaleString('fa-IR')}` : '');
+            document.getElementById('submitText').value = '';
+            document.getElementById('submitFile').value = '';
+            submitModalInstance.show();
+        }
+
+        async function submitExercise() {
+            const exerciseId = parseInt(document.getElementById('submitExerciseId').value);
+            const text = document.getElementById('submitText').value.trim();
+            const fileInput = document.getElementById('submitFile');
+
+            if (!text && fileInput.files.length === 0) {
+                showToast('متن یا فایل پاسخ الزامی است.', false);
+                return;
+            }
+
+            const fd = new FormData();
+            fd.append('exerciseId', exerciseId);
+            fd.append('text', text);
+            if (fileInput.files.length > 0) fd.append('file', fileInput.files[0]);
+
+            try {
+                const res = await fetch('/StudentPanel/SubmitExercise', {
+                    method: 'POST',
+                    headers: { 'RequestVerificationToken': getAntiforgeryToken() },
+                    body: fd
+                }).then(r => r.json());
+
+                showToast(res.message, res.success);
+                if (res.success) {
+                    submitModalInstance.hide();
+                    loadExercises();
+                }
+            } catch (e) {
+                showToast('خطا در ارتباط با سرور', false);
+            }
+        }
+
+        // ===== اعلان‌ها =====
+        async function loadNotifications() {
+            notifications = await ajaxGet('/StudentPanel/GetMyNotifications');
+            const unread = notifications.filter(n => !n.isRead).length;
+            document.getElementById('unreadBadge').textContent = unread > 0 ? unread : '';
+
+            document.getElementById('notificationsList').innerHTML = notifications.length === 0
+                ? '<div class="text-center py-4 text-muted">اعلانی وجود ندارد.</div>'
+                : notifications.map(n => `
+                        <div class="card stat-card p-3 mb-2 ${n.isRead ? '' : 'border-primary'}">
+                            <div class="d-flex justify-content-between">
+                                <b>${escapeHtml(n.title)}</b>
+                                <span class="small text-muted">${new Date(n.createdAt).toLocaleString('fa-IR')}</span>
+                            </div>
+                            <div class="small">${escapeHtml(n.message)}</div>
+                            ${n.isRead ? '' : `<button class="btn btn-sm btn-outline-primary mt-2" onclick="markRead(${n.id})">خواندم</button>`}
+                        </div>`).join('');
+        }
+
+        function renderOverview() {
+            const activeCourses = enrollments.filter(e => e.status === 1).length;
+            const absences = attendance.filter(a => a.status === 2).length;
+            const pendingExercises = exercises.filter(x => x.submissionId === null).length;
+            const avg = scores.length > 0 ? (scores.reduce((sum, s) => sum + s.scoreValue, 0) / scores.length).toFixed(2) : '-';
+
+            document.getElementById('overviewCards').innerHTML = `
+                    <div class="col-md-3 col-6"><div class="card stat-card p-3"><div class="text-muted small">دوره‌های فعال</div><h4 class="mb-0 text-primary">${activeCourses}</h4></div></div>
+                    <div class="col-md-3 col-6"><div class="card stat-card p-3"><div class="text-muted small">غیبت‌ها</div><h4 class="mb-0 text-danger">${absences}</h4></div></div>
+                    <div class="col-md-3 col-6"><div class="card stat-card p-3"><div class="text-muted small">تکالیف ارسال‌نشده</div><h4 class="mb-0 text-warning">${pendingExercises}</h4></div></div>
+                    <div class="col-md-3 col-6"><div class="card stat-card p-3"><div class="text-muted small">میانگین نمرات</div><h4 class="mb-0 text-success">${avg}</h4></div></div>`;
+        }
+
+        async function markRead(id) {
+            const res = await ajaxPost('/StudentPanel/MarkNotificationRead', { id });
+            if (res.success) loadNotifications();
+        }
+
+        async function markAllRead() {
+            const res = await ajaxPost('/StudentPanel/MarkAllNotificationsRead', {});
+            if (res.success) loadNotifications();
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+    </script>
+}

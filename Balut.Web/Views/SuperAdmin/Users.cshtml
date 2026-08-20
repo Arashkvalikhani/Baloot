@@ -1,0 +1,187 @@
+﻿@{
+    ViewData["Title"] = "مدیریت کاربران";
+}
+
+<h4 class="fw-bold mb-4"> مدیریت کاربران</h4>
+
+<div class="card stat-card p-3 mb-3">
+    <input type="text" id="searchInput" class="form-control" placeholder="جستجو بر اساس نام کاربری یا نام..." />
+</div>
+
+<div class="card stat-card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr><th>نام کاربری</th><th>نام</th><th>نقش‌ها</th><th>وضعیت</th><th>تاریخ ایجاد</th><th>عملیات</th></tr>
+            </thead>
+            <tbody id="tableBody"><tr><td colspan="6" class="text-center py-4">در حال بارگذاری...</td></tr></tbody>
+        </table>
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center bg-white">
+        <span id="pageInfo" class="small text-muted"></span>
+        <ul class="pagination pagination-sm mb-0" id="pagination"></ul>
+    </div>
+</div>
+
+<!-- مودال نقش‌ها -->
+<div class="modal fade" id="rolesModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"> تغییر نقش‌ها: <span id="rolesUserName"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="rolesUserId" value="" />
+                <div id="rolesChecklist"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-success" onclick="saveRoles()"> اعمال نقش‌ها</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- مودال ریست رمز -->
+<div class="modal fade" id="resetModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"> تغییر رمز: <span id="resetUserName"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="resetUserId" value="" />
+                <label class="form-label">رمز عبور جدید *</label>
+                <input type="text" id="resetPassword" class="form-control" placeholder="حداقل 8 کاراکتر" />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-danger" onclick="resetPassword()"> تغییر رمز</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let currentPage = 1;
+        let allRoles = [];
+        let rolesModalInstance, resetModalInstance;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            rolesModalInstance = new bootstrap.Modal(document.getElementById('rolesModal'));
+            resetModalInstance = new bootstrap.Modal(document.getElementById('resetModal'));
+            allRoles = await ajaxGet('/SuperAdmin/GetRoles');
+            loadUsers(1);
+            let timer;
+            document.getElementById('searchInput').addEventListener('input', () => {
+                clearTimeout(timer);
+                timer = setTimeout(() => loadUsers(1), 400);
+            });
+        });
+
+        async function loadUsers(page) {
+            currentPage = page;
+            const search = document.getElementById('searchInput').value.trim();
+            try {
+                const res = await ajaxGet(`/SuperAdmin/GetUsers?pageNumber=${page}&pageSize=10&search=${encodeURIComponent(search)}`);
+                renderTable(res);
+                renderPagination(res);
+            } catch (e) { showToast('خطا در دریافت کاربران', false); }
+        }
+
+        function renderTable(res) {
+            const tbody = document.getElementById('tableBody');
+            if (!res.items || res.items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">کاربری یافت نشد.</td></tr>';
+                document.getElementById('pageInfo').textContent = '';
+                return;
+            }
+            tbody.innerHTML = res.items.map(u => `
+                    <tr>
+                        <td><b>${escapeHtml(u.userName)}</b></td>
+                        <td>${escapeHtml(u.firstName)} ${escapeHtml(u.lastName)}</td>
+                        <td>${u.roles.map(r => `<span class="badge bg-info me-1">${escapeHtml(r)}</span>`).join('') || '-'}</td>
+                        <td>${u.status === 1 ? '<span class="badge bg-success">فعال</span>' : '<span class="badge bg-danger">غیرفعال</span>'}</td>
+                        <td class="small">${new Date(u.createdAt).toLocaleDateString('fa-IR')}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="openRolesModal('${u.id}', '${escapeHtml(u.userName)}', ${JSON.stringify(u.roles).replace(/"/g, '&quot;')})"> نقش‌ها</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="openResetModal('${u.id}', '${escapeHtml(u.userName)}')"> رمز</button>
+                            <button class="btn btn-sm btn-outline-warning" onclick="toggleStatus('${u.id}')">${u.status === 1 ? '' : ''}</button>
+                        </td>
+                    </tr>`).join('');
+            document.getElementById('pageInfo').textContent = `صفحه ${res.pageNumber} از ${res.totalPages} - مجموع ${res.totalCount} کاربر`;
+        }
+
+        function renderPagination(res) {
+            const ul = document.getElementById('pagination');
+            ul.innerHTML = '';
+            for (let p = 1; p <= res.totalPages; p++) {
+                const li = document.createElement('li');
+                li.className = 'page-item' + (p === res.pageNumber ? ' active' : '');
+                li.innerHTML = `<a class="page-link" href="javascript:void(0)" onclick="loadUsers(${p})">${p}</a>`;
+                ul.appendChild(li);
+            }
+        }
+
+        function openRolesModal(userId, userName, currentRoles) {
+            document.getElementById('rolesUserId').value = userId;
+            document.getElementById('rolesUserName').textContent = userName;
+            document.getElementById('rolesChecklist').innerHTML = allRoles.map(r => `
+                    <div class="form-check">
+                        <input class="form-check-input role-check" type="checkbox" value="${escapeHtml(r.name)}"
+                               id="role_${escapeHtml(r.name)}" ${currentRoles.includes(r.name) ? 'checked' : ''}>
+                        <label class="form-check-label" for="role_${escapeHtml(r.name)}">${escapeHtml(r.name)}</label>
+                    </div>`).join('');
+            rolesModalInstance.show();
+        }
+
+        async function saveRoles() {
+            const userId = document.getElementById('rolesUserId').value;
+            const roles = Array.from(document.querySelectorAll('.role-check:checked')).map(c => c.value);
+            try {
+                const res = await ajaxPost('/SuperAdmin/SetRoles', { userId, roles });
+                showToast(res.message, res.success);
+                if (res.success) { rolesModalInstance.hide(); loadUsers(currentPage); }
+            } catch (e) { showToast('خطا در ارتباط با سرور', false); }
+        }
+
+        function openResetModal(userId, userName) {
+            document.getElementById('resetUserId').value = userId;
+            document.getElementById('resetUserName').textContent = userName;
+            document.getElementById('resetPassword').value = '';
+            resetModalInstance.show();
+        }
+
+        async function resetPassword() {
+            const data = {
+                userId: document.getElementById('resetUserId').value,
+                newPassword: document.getElementById('resetPassword').value
+            };
+            if (data.newPassword.length < 8) { showToast('رمز باید حداقل 8 کاراکتر باشد.', false); return; }
+            try {
+                const res = await ajaxPost('/SuperAdmin/ResetPassword', data);
+                showToast(res.message, res.success);
+                if (res.success) resetModalInstance.hide();
+            } catch (e) { showToast('خطا در ارتباط با سرور', false); }
+        }
+
+        async function toggleStatus(userId) {
+            if (!confirm('وضعیت این کاربر تغییر کند؟')) return;
+            try {
+                const res = await ajaxPost('/SuperAdmin/ToggleStatus', { userId });
+                showToast(res.message, res.success);
+                if (res.success) loadUsers(currentPage);
+            } catch (e) { showToast('خطا در ارتباط با سرور', false); }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+    </script>
+}

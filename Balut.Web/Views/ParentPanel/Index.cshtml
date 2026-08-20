@@ -1,0 +1,48 @@
+﻿@{
+    ViewData["Title"] = "پنل والدین";
+}
+
+<h4 class="fw-bold mb-4">‍‍👧 پنل والدین - فرزندان من</h4>
+
+<div id="childrenContainer" class="row g-3">
+    <div class="col-12 text-center py-5 text-muted">در حال بارگذاری...</div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', loadChildren);
+
+        async function loadChildren() {
+            try {
+                const children = await ajaxGet('/ParentPanel/GetMyChildren');
+                const container = document.getElementById('childrenContainer');
+
+                if (!children || children.length === 0) {
+                    container.innerHTML = '<div class="col-12 text-center py-5 text-muted">هیچ فرزندی به حساب شما متصل نشده است. با آموزشگاه تماس بگیرید.</div>';
+                    return;
+                }
+
+                container.innerHTML = children.map(c => `
+                        <div class="col-md-4">
+                            <div class="card stat-card p-3 h-100 text-center">
+                                <div style="font-size:3rem">🧑‍</div>
+                                <h5 class="fw-bold">${escapeHtml(c.firstName)} ${escapeHtml(c.lastName)}</h5>
+                                <div class="text-muted small mb-2">کد ملی: ${escapeHtml(c.nationalCode) || '-'}</div>
+                                <div class="small mb-3">دوره‌های فعال: <b>${c.activeCoursesCount}</b></div>
+                                <a href="/ParentPanel/ChildDetail?studentId=${c.studentId}" class="btn btn-primary btn-sm w-100"> مشاهده کارنامه و گزارش</a>
+                            </div>
+                        </div>`).join('');
+            } catch (e) {
+                document.getElementById('childrenContainer').innerHTML =
+                    '<div class="col-12 text-center py-5 text-danger">خطا در دریافت اطلاعات</div>';
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+    </script>
+}

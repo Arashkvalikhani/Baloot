@@ -1,0 +1,84 @@
+﻿@{
+    ViewData["Title"] = "ثبت نمرات";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0"> ثبت نمرات جلسه (از 0 تا 10)</h4>
+    <button class="btn btn-success" onclick="saveScores()"> ذخیره نمرات</button>
+</div>
+
+<div class="card stat-card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr><th>#</th><th>دانشجو</th><th>نمره (0-10)</th><th>توضیح</th></tr>
+            </thead>
+            <tbody id="tableBody"><tr><td colspan="4" class="text-center py-4">در حال بارگذاری...</td></tr></tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const sessionId = @ViewData["SessionId"];
+
+        document.addEventListener('DOMContentLoaded', loadScores);
+
+        async function loadScores() {
+            try {
+                const items = await ajaxGet('/TeacherPanel/GetScoresData?sessionId=' + sessionId);
+                const tbody = document.getElementById('tableBody');
+
+                if (!items || items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted">هیچ دانشجویی در این کلاس ثبت‌نام نکرده است.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = items.map((s, i) => `
+                        <tr data-student="${s.studentId}">
+                            <td>${i + 1}</td>
+                            <td><b>${escapeHtml(s.studentName)}</b></td>
+                            <td style="width:150px">
+                                <input type="number" class="form-control score-input" min="0" max="10" step="0.25"
+                                       value="${s.scoreValue !== null ? s.scoreValue : ''}" placeholder="-" />
+                            </td>
+                            <td>
+                                <input type="text" class="form-control comment-input" value="${escapeHtml(s.comments) || ''}" placeholder="توضیح (اختیاری)" />
+                            </td>
+                        </tr>`).join('');
+            } catch (e) { showToast('خطا در دریافت اطلاعات', false); }
+        }
+
+        async function saveScores() {
+            const rows = document.querySelectorAll('#tableBody tr[data-student]');
+            const items = [];
+            let invalid = false;
+
+            rows.forEach(row => {
+                const studentId = parseInt(row.getAttribute('data-student'));
+                const scoreVal = row.querySelector('.score-input').value;
+                const comment = row.querySelector('.comment-input').value.trim();
+
+                if (scoreVal !== '') {
+                    const v = parseFloat(scoreVal);
+                    if (isNaN(v) || v < 0 || v > 10) { invalid = true; return; }
+                    items.push({ studentId, studentName: '', scoreValue: v, comments: comment || null });
+                }
+            });
+
+            if (invalid) { showToast('نمره باید عددی بین 0 تا 10 باشد.', false); return; }
+
+            try {
+                const res = await ajaxPost('/TeacherPanel/SaveScores', { sessionId: sessionId, items: items });
+                showToast(res.message, res.success);
+            } catch (e) { showToast('خطا در ارتباط با سرور', false); }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+    </script>
+}

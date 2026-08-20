@@ -1,0 +1,210 @@
+﻿@{
+    ViewData["Title"] = "ثبت‌نام دانشجو در کلاس";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0">ثبت‌نام دانشجو در کلاس</h4>
+</div>
+
+<div class="card stat-card p-3 mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-5">
+            <label class="form-label">دانشجو *</label>
+            <select id="studentSelect" class="form-select"></select>
+        </div>
+        <div class="col-md-5">
+            <label class="form-label">کلاس *</label>
+            <select id="classSelect" class="form-select"></select>
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-primary w-100" onclick="createEnrollment()">ثبت‌نام</button>
+        </div>
+    </div>
+</div>
+
+<div class="card stat-card p-3 mb-3">
+    <input type="text" id="searchInput" class="form-control" placeholder="جستجو بر اساس نام دانشجو..." />
+</div>
+
+<div class="card stat-card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr><th>#</th><th>دانشجو</th><th>کلاس</th><th>دوره</th><th>تاریخ ثبت‌نام</th><th>وضعیت</th><th>پرداخت</th><th>عملیات</th></tr>
+            </thead>
+            <tbody id="tableBody"><tr><td colspan="8" class="text-center py-4">در حال بارگذاری...</td></tr></tbody>
+        </table>
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center bg-white">
+        <span id="pageInfo" class="small text-muted"></span>
+        <ul class="pagination pagination-sm mb-0" id="pagination"></ul>
+    </div>
+</div>
+
+<!-- مودال ویرایش -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"> ویرایش ثبت‌نام</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editId" value="0" />
+                <div id="editInfo" class="alert alert-light border small mb-3"></div>
+                <div class="mb-3">
+                    <label class="form-label">وضعیت ثبت‌نام</label>
+                    <select id="editStatus" class="form-select">
+                        <option value="1">فعال</option>
+                        <option value="3">انصراف</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">وضعیت پرداخت</label>
+                    <select id="editPayment" class="form-select">
+                        <option value="0">پرداخت نشده</option>
+                        <option value="1">پرداخت شده</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-success" onclick="saveEdit()"> ذخیره تغییرات</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let currentPage = 1;
+        let currentItems = [];
+        let editModalInstance = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            editModalInstance = new bootstrap.Modal(document.getElementById('editModal'));
+            loadDropdowns();
+            loadEnrollments(1);
+            let timer;
+            document.getElementById('searchInput').addEventListener('input', () => {
+                clearTimeout(timer);
+                timer = setTimeout(() => loadEnrollments(1), 400);
+            });
+        });
+
+        async function loadDropdowns() {
+            try {
+                const [students, classes] = await Promise.all([
+                    ajaxGet('/Student/GetAll'),
+                    ajaxGet('/Class/GetAll')
+                ]);
+                document.getElementById('studentSelect').innerHTML =
+                    students.map(s => `<option value="${s.id}">${escapeHtml(s.firstName)} ${escapeHtml(s.lastName)} (${escapeHtml(s.nationalCode)})</option>`).join('');
+                document.getElementById('classSelect').innerHTML =
+                    classes.map(c => `<option value="${c.id}">${escapeHtml(c.name)} - ${escapeHtml(c.courseTitle)}</option>`).join('');
+            } catch (e) { showToast('خطا در بارگذاری لیست‌ها', false); }
+        }
+
+        async function loadEnrollments(page) {
+            currentPage = page;
+            const search = document.getElementById('searchInput').value.trim();
+            try {
+                const res = await ajaxGet(`/Enrollment/GetEnrollments?pageNumber=${page}&pageSize=10&search=${encodeURIComponent(search)}`);
+                currentItems = res.items || [];
+                renderTable(res);
+                renderPagination(res);
+            } catch (e) { showToast('خطا در دریافت اطلاعات', false); }
+        }
+
+        function renderTable(res) {
+            const tbody = document.getElementById('tableBody');
+            if (!res.items || res.items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">هیچ ثبت‌نامی یافت نشد.</td></tr>';
+                document.getElementById('pageInfo').textContent = '';
+                return;
+            }
+            tbody.innerHTML = res.items.map((e, i) => `
+                    <tr>
+                        <td>${(res.pageNumber - 1) * res.pageSize + i + 1}</td>
+                        <td>${escapeHtml(e.studentName)}</td>
+                        <td>${escapeHtml(e.className)}</td>
+                        <td>${escapeHtml(e.courseTitle)}</td>
+                        <td>${new Date(e.enrollmentDate).toLocaleDateString('fa-IR')}</td>
+                        <td>${e.status === 1 ? '<span class="badge bg-success">فعال</span>' : '<span class="badge bg-secondary">انصراف</span>'}</td>
+                        <td>${e.paymentStatus === 1 ? '<span class="badge bg-success">پرداخت شده</span>' : '<span class="badge bg-warning">پرداخت نشده</span>'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="openEditModal(${e.id})"> ویرایش</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteEnrollment(${e.id})"> حذف</button>
+                        </td>
+                    </tr>`).join('');
+            document.getElementById('pageInfo').textContent = `صفحه ${res.pageNumber} از ${res.totalPages} - مجموع ${res.totalCount} ثبت‌نام`;
+        }
+
+        function renderPagination(res) {
+            const ul = document.getElementById('pagination');
+            ul.innerHTML = '';
+            for (let p = 1; p <= res.totalPages; p++) {
+                const li = document.createElement('li');
+                li.className = 'page-item' + (p === res.pageNumber ? ' active' : '');
+                li.innerHTML = `<a class="page-link" href="javascript:void(0)" onclick="loadEnrollments(${p})">${p}</a>`;
+                ul.appendChild(li);
+            }
+        }
+
+        async function createEnrollment() {
+            const studentId = parseInt(document.getElementById('studentSelect').value);
+            const classId = parseInt(document.getElementById('classSelect').value);
+            if (!studentId || !classId) { showToast('دانشجو و کلاس را انتخاب کنید.', false); return; }
+            try {
+                const res = await ajaxPost('/Enrollment/Create', { studentId, classId });
+                showToast(res.message, res.success);
+                if (res.success) loadEnrollments(currentPage);
+            } catch (e) { showToast('خطا در ارتباط با سرور', false); }
+        }
+
+        // ===== ویرایش (وضعیت + پرداخت) =====
+        function openEditModal(id) {
+            const e = currentItems.find(x => x.id === id);
+            if (!e) return;
+            document.getElementById('editId').value = e.id;
+            document.getElementById('editInfo').innerHTML =
+                `<b>${escapeHtml(e.studentName)}</b> در کلاس <b>${escapeHtml(e.className)}</b>`;
+            document.getElementById('editStatus').value = e.status.toString();
+            document.getElementById('editPayment').value = e.paymentStatus.toString();
+            editModalInstance.show();
+        }
+
+        async function saveEdit() {
+            const data = {
+                id: parseInt(document.getElementById('editId').value),
+                status: parseInt(document.getElementById('editStatus').value),
+                paymentStatus: parseInt(document.getElementById('editPayment').value)
+            };
+            try {
+                const res = await ajaxPost('/Enrollment/Update', data);
+                showToast(res.message, res.success);
+                if (res.success) {
+                    editModalInstance.hide();
+                    loadEnrollments(currentPage);
+                }
+            } catch (e) { showToast('خطا در ارتباط با سرور', false); }
+        }
+
+        // ===== حذف کامل =====
+        async function deleteEnrollment(id) {
+            if (!confirm('این ثبت‌نام به همراه پرداخت‌های مرتبط برای همیشه حذف می‌شود. مطمئن هستید؟')) return;
+            try {
+                const res = await ajaxPost('/Enrollment/Delete', { id });
+                showToast(res.message, res.success);
+                if (res.success) loadEnrollments(currentPage);
+            } catch (e) { showToast('خطا در ارتباط با سرور', false); }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+    </script>
+}

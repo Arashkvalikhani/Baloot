@@ -1,0 +1,54 @@
+﻿@{
+    ViewData["Title"] = "پنل معلم";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0">کلاس‌های من</h4>
+    <button class="btn btn-outline-secondary btn-sm" onclick="loadMyClasses()"> بروزرسانی</button>
+</div>
+
+<div id="classesContainer" class="row g-3">
+    <div class="col-12 text-center py-5 text-muted">در حال بارگذاری...</div>
+</div>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', loadMyClasses);
+
+    async function loadMyClasses() {
+        try {
+            const classes = await ajaxGet('/TeacherPanel/GetMyClasses');
+            const container = document.getElementById('classesContainer');
+
+            if (!classes || classes.length === 0) {
+                container.innerHTML = '<div class="col-12 text-center py-5 text-muted">هنوز کلاسی به شما اختصاص داده نشده است.</div>';
+                return;
+            }
+
+            container.innerHTML = classes.map(c => `
+                <div class="col-md-4">
+                    <div class="card stat-card p-3 h-100">
+                        <h5 class="fw-bold">${escapeHtml(c.name)}</h5>
+                        <div class="text-muted small mb-2">${escapeHtml(c.courseTitle)}</div>
+                        <div class="small mb-1"> تعداد دانشجو: <b>${c.studentCount}</b> / ${c.capacity}</div>
+                        <div class="small mb-3">🕒 ${escapeHtml(c.schedule) || 'بدون برنامه'}</div>
+                        <div class="d-grid gap-2">
+                            <a href="/TeacherPanel/Students?classId=${c.id}" class="btn btn-outline-success btn-sm"> دانشجویان کلاس</a>
+                            <a href="/TeacherPanel/Sessions?classId=${c.id}" class="btn btn-primary btn-sm">📅 جلسات و حضور و غیاب</a>
+                        </div>
+                    </div>
+                </div>`).join('');
+        } catch (e) {
+            document.getElementById('classesContainer').innerHTML =
+                '<div class="col-12 text-center py-5 text-danger">خطا در دریافت اطلاعات</div>';
+        }
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+</script>
+}

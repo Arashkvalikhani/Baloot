@@ -1,0 +1,56 @@
+﻿@model LoginViewModel
+@{
+    ViewData["Title"] = "ورود به سیستم";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ورود | مجموعه آموزشی بلوط</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.rtl.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body>
+    <div class="auth-page">
+        <div class="auth-card">
+            <div class="auth-logo">بلوط</div>
+            <h3 class="auth-title">مجموعه آموزشی بلوط</h3>
+            <p class="auth-subtitle">برای ادامه وارد حساب کاربری خود شوید</p>
+
+            <form asp-action="Login" method="post">
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 mb-3" style="display:@(ViewData.ModelState.ErrorCount > 0 ? "block" : "none")"></div>
+
+                <div class="mb-3">
+                    <label asp-for="UserName" class="form-label">نام کاربری</label>
+                    <input asp-for="UserName" class="form-control" placeholder="نام کاربری خود را وارد کنید" autocomplete="username" />
+                    <span asp-validation-for="UserName" class="text-danger small"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Password" class="form-label">رمز عبور</label>
+                    <input asp-for="Password" class="form-control" placeholder="رمز عبور خود را وارد کنید" autocomplete="current-password" />
+                    <span asp-validation-for="Password" class="text-danger small"></span>
+                </div>
+
+                <div class="form-check mb-4">
+                    <input asp-for="RememberMe" class="form-check-input" />
+                    <label asp-for="RememberMe" class="form-check-label small">مرا به خاطر بسپار</label>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">ورود به سیستم</button>
+            </form>
+
+            <div class="auth-footer">
+                تمامی حقوق محفوظ است - مجموعه آموزشی بلوط
+            </div>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+    <script src="~/lib/jquery-validation-unobtrusive/dist/jquery.validate.unobtrusive.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,251 @@
+﻿@{
+    ViewData["Title"] = "پیام‌ها";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1">پیام‌ها</h2>
+        <p class="text-muted small mb-0">گفتگوی معلم و والدین درباره دانشجو</p>
+    </div>
+    <button type="button" class="btn btn-outline-primary chat-partners-toggle" onclick="togglePartners()">
+        مخاطبین
+    </button>
+</div>
+
+<!-- Backdrop برای موبایل -->
+<div class="chat-backdrop" id="chatBackdrop" onclick="closePartners()"></div>
+
+<div class="chat-wrap">
+    <!-- لیست مخاطبین -->
+    <div class="chat-sidebar card" id="chatSidebar">
+        <div class="chat-sidebar-header">مخاطبین</div>
+        <div class="chat-partner-list" id="partnersList">
+            <div class="chat-empty" style="height:200px">در حال بارگذاری...</div>
+        </div>
+    </div>
+
+    <!-- رشته پیام -->
+    <div class="chat-main card">
+        <div class="chat-main-header" id="threadHeader" style="display:none">
+            <span class="chat-avatar" id="threadAvatar"></span>
+            <div>
+                <div id="threadTitle"></div>
+                <div class="small text-muted" style="font-weight:normal" id="threadSub"></div>
+            </div>
+        </div>
+
+        <div class="chat-messages" id="threadBody">
+            <div class="chat-empty">
+                <div class="chat-empty-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                </div>
+                <div>برای شروع گفتگو، یک مخاطب انتخاب کنید</div>
+            </div>
+        </div>
+
+        <div class="chat-input-area">
+            <input type="text" id="messageInput" class="form-control" placeholder="پیام خود را بنویسید..." disabled />
+            <button type="button" class="btn btn-primary" id="sendBtn" onclick="sendMessage()" disabled>ارسال</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let currentPartner = null;
+        let pollTimer = null;
+        let lastMessageCount = 0;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadPartners();
+
+            document.getElementById('messageInput').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') sendMessage();
+            });
+        });
+
+        // ===== باز/بستن لیست مخاطبین (موبایل) =====
+        function togglePartners() {
+            document.body.classList.toggle('chat-partners-open');
+        }
+
+        function closePartners() {
+            document.body.classList.remove('chat-partners-open');
+        }
+
+        // ===== بارگذاری مخاطبین با بج خوانده‌نشده =====
+        async function loadPartners() {
+            try {
+                const partners = await ajaxGet('/Chat/GetPartners');
+                const list = document.getElementById('partnersList');
+
+                if (!partners || partners.length === 0) {
+                    list.innerHTML = '<div class="chat-empty" style="height:200px"><div class="small">مخاطبی یافت نشد</div></div>';
+                    return;
+                }
+
+                list.innerHTML = partners.map(p => `
+                        <button type="button" class="chat-partner-item"
+                                data-user="${escapeAttr(p.userId)}" data-student="${p.studentId}"
+                                onclick="selectPartner(this, '${escapeAttr(p.userId)}', ${p.studentId}, '${escapeAttr(p.fullName)}', '${escapeAttr(p.studentName)}')">
+                            <div>
+                                <div class="chat-partner-name">${escapeHtml(p.fullName)}</div>
+                                <div class="chat-partner-sub">درباره: ${escapeHtml(p.studentName)}</div>
+                            </div>
+                            ${p.unreadCount > 0 ? `<span class="chat-unread-badge">${p.unreadCount}</span>` : ''}
+                        </button>`).join('');
+
+                // حفظ حالت active روی مخاطب فعلی
+                if (currentPartner) {
+                    const activeBtn = list.querySelector(`.chat-partner-item[data-user="${currentPartner.userId}"][data-student="${currentPartner.studentId}"]`);
+                    if (activeBtn) activeBtn.classList.add('active');
+                }
+            } catch (e) {
+                showToast('خطا در دریافت مخاطبین', false);
+            }
+        }
+
+        // ===== بروزرسانی بج‌ها بدون رندر مجدد لیست =====
+        async function syncBadges() {
+            try {
+                const partners = await ajaxGet('/Chat/GetPartners');
+
+                document.querySelectorAll('.chat-partner-item').forEach(item => {
+                    const uid = item.getAttribute('data-user');
+                    const sid = parseInt(item.getAttribute('data-student'));
+                    const p = partners.find(x => x.userId === uid && x.studentId === sid);
+                    const count = p ? p.unreadCount : 0;
+
+                    let badge = item.querySelector('.chat-unread-badge');
+
+                    if (count > 0) {
+                        if (!badge) {
+                            badge = document.createElement('span');
+                            badge.className = 'chat-unread-badge';
+                            item.appendChild(badge);
+                        }
+                        badge.textContent = count;
+                    } else if (badge) {
+                        badge.remove();
+                    }
+                });
+            } catch (e) { }
+        }
+
+        // ===== انتخاب مخاطب =====
+        function selectPartner(btn, userId, studentId, fullName, studentName) {
+            currentPartner = { userId, studentId, fullName, studentName };
+            lastMessageCount = 0;
+
+            document.querySelectorAll('.chat-partner-item').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            document.getElementById('threadHeader').style.display = 'flex';
+            document.getElementById('threadAvatar').textContent = fullName.trim().charAt(0);
+            document.getElementById('threadTitle').textContent = fullName;
+            document.getElementById('threadSub').textContent = 'درباره: ' + studentName;
+
+            document.getElementById('messageInput').disabled = false;
+            document.getElementById('sendBtn').disabled = false;
+            document.getElementById('messageInput').focus();
+
+            // در موبایل بعد از انتخاب، لیست مخاطبین بسته شود
+            closePartners();
+
+            loadThread(true);
+
+            if (pollTimer) clearInterval(pollTimer);
+            pollTimer = setInterval(() => {
+                loadThread(false);
+                syncBadges();
+            }, 5000);
+        }
+
+        // ===== بارگذاری رشته پیام =====
+        async function loadThread(forceScroll) {
+            if (!currentPartner) return;
+            try {
+                const messages = await ajaxGet(`/Chat/GetThread?otherUserId=${encodeURIComponent(currentPartner.userId)}&studentId=${currentPartner.studentId}`);
+                const body = document.getElementById('threadBody');
+
+                if (!messages || messages.length === 0) {
+                    body.innerHTML = `
+                            <div class="chat-empty">
+                                <div class="chat-empty-icon">
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                    </svg>
+                                </div>
+                                <div>هنوز پیامی رد و بدل نشده است</div>
+                                <div class="small">اولین پیام را ارسال کنید</div>
+                            </div>`;
+                    lastMessageCount = 0;
+                    return;
+                }
+
+                const nearBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 80;
+
+                body.innerHTML = messages.map(m => `
+                        <div class="msg-row ${m.isMine ? 'mine' : 'other'}">
+                            <div>
+                                <div class="msg-bubble">${escapeHtml(m.content)}</div>
+                                <div class="msg-time">${new Date(m.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })}</div>
+                            </div>
+                        </div>`).join('');
+
+                if (forceScroll || nearBottom || messages.length !== lastMessageCount) {
+                    body.scrollTop = body.scrollHeight;
+                }
+
+                lastMessageCount = messages.length;
+            } catch (e) { }
+        }
+
+        // ===== ارسال پیام =====
+        async function sendMessage() {
+            if (!currentPartner) return;
+            const input = document.getElementById('messageInput');
+            const content = input.value.trim();
+            if (!content) return;
+
+            try {
+                const res = await ajaxPost('/Chat/Send', {
+                    receiverId: currentPartner.userId,
+                    studentId: currentPartner.studentId,
+                    content: content
+                });
+
+                if (res.success) {
+                    input.value = '';
+                    input.focus();
+                    loadThread(true);
+                    syncBadges();
+                } else {
+                    showToast(res.message, false);
+                }
+            } catch (e) {
+                showToast('خطا در ارسال پیام', false);
+            }
+        }
+
+        // ===== ابزارها =====
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function escapeAttr(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+    </script>
+}
